@@ -1,0 +1,405 @@
+/* GlamPack Custom Color Scheme - Red Theme */
+
+:root {
+  /* Primary Red Colors */
+  --glampack-red: #DC143C;
+  --glampack-dark-red: #B8112A;
+  --glampack-light-red: #FF6B8A;
+  --glampack-black: #1a1a1a;
+  --glampack-white: #ffffff;
+
+  /* Override Metronic Primary Colors */
+  --bs-primary: #DC143C;
+  --bs-primary-rgb: 220, 20, 60;
+  --bs-primary-light: #FF6B8A;
+  --bs-primary-inverse: #ffffff;
+  --bs-primary-active: #B8112A;
+}
+
+/* Primary Color Overrides */
+.text-primary {
+  color: #DC143C !important;
+}
+
+.bg-primary {
+  background-color: #DC143C !important;
+}
+
+.bg-light-primary {
+  background-color: rgba(220, 20, 60, 0.1) !important;
+}
+
+.border-primary {
+  border-color: #DC143C !important;
+}
+
+.btn-primary {
+  background-color: #DC143C !important;
+  border-color: #DC143C !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #B8112A !important;
+  border-color: #B8112A !important;
+}
+
+.btn-light-primary {
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  color: #DC143C !important;
+}
+
+.btn-light-primary:hover,
+.btn-light-primary:focus {
+  background-color: rgba(220, 20, 60, 0.2) !important;
+  color: #B8112A !important;
+}
+
+/* Badge Overrides */
+.badge-light-primary {
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  color: #DC143C !important;
+}
+
+.badge-primary {
+  background-color: #DC143C !important;
+  color: #ffffff !important;
+}
+
+/* Link Colors */
+.text-hover-primary:hover {
+  color: #DC143C !important;
+}
+
+/* Active Menu States */
+.menu-link.active {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.menu-link.active .menu-icon i {
+  color: #ffffff !important;
+}
+
+.menu-link.active .menu-title {
+  color: #ffffff !important;
+}
+
+.menu-item.here > .menu-link {
+  background-color: transparent !important;
+}
+
+.menu-item.here > .menu-link .menu-title,
+.menu-item.here > .menu-link .menu-icon i {
+  color: #ffffff !important;
+}
+
+/* Sidebar Toggle Button */
+.app-sidebar-toggle.active {
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  color: #DC143C !important;
+}
+
+/* Sidebar Minimize State */
+body.app-sidebar-minimize .app-sidebar {
+  width: 75px !important;
+  transition: width 0.3s ease;
+}
+
+body.app-sidebar-minimize .app-sidebar .menu-title,
+body.app-sidebar-minimize .app-sidebar .app-sidebar-logo img,
+body.app-sidebar-minimize .app-sidebar-footer .ms-3 {
+  display: none !important;
+}
+
+body.app-sidebar-minimize .app-sidebar .menu-link {
+  justify-content: center !important;
+}
+
+body.app-sidebar-minimize .app-wrapper {
+  padding-left: 75px !important;
+  transition: padding-left 0.3s ease;
+}
+
+/* Sidebar Footer Dark Theme */
+.app-sidebar-footer .d-flex.flex-stack {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.app-sidebar-footer .text-gray-900,
+.app-sidebar-footer .text-gray-600 {
+  color: #ffffff !important;
+}
+
+/* Form Controls Focus */
+.form-control:focus,
+.form-select:focus {
+  border-color: #DC143C !important;
+  box-shadow: 0 0 0 0.25rem rgba(220, 20, 60, 0.15) !important;
+}
+
+/* Table Row Hover */
+.table-row-hover:hover {
+  background-color: rgba(220, 20, 60, 0.05) !important;
+}
+
+/* Active States */
+.btn-active-color-primary:active,
+.btn-active-color-primary.active,
+.btn-active-color-primary.show {
+  color: #DC143C !important;
+}
+
+.btn-active-light-primary:active,
+.btn-active-light-primary.active {
+  background-color: rgba(220, 20, 60, 0.2) !important;
+  color: #DC143C !important;
+}
+
+/* Symbol Background */
+.symbol-label.bg-light-primary {
+  background-color: rgba(220, 20, 60, 0.1) !important;
+}
+
+/* SweetAlert2 Confirm Button Override */
+.swal2-confirm.swal2-styled {
+  background-color: #DC143C !important;
+}
+
+.swal2-confirm.swal2-styled:hover {
+  background-color: #B8112A !important;
+}
+
+/* DataTables Pagination */
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background-color: #DC143C !important;
+  border-color: #DC143C !important;
+  color: #ffffff !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  border-color: #DC143C !important;
+  color: #DC143C !important;
+}
+
+/* Authentication Pages Styling */
+.auth-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.auth-form-container {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  padding: 2.5rem;
+  margin: auto;
+  max-width: 450px;
+  width: 100%;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-logo {
+  animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.auth-form-container h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form-container .form-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form-container .form-control {
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  padding: 0.625rem 1rem;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.auth-form-container .form-control:focus {
+  border-color: #DC143C;
+  box-shadow: 0 0 0 0.2rem rgba(220, 20, 60, 0.1);
+  transform: translateY(-2px);
+}
+
+.auth-form-container .btn-primary {
+  padding: 0.875rem 2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(220, 20, 60, 0.3);
+}
+
+.auth-form-container .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 20, 60, 0.4);
+}
+
+.auth-form-container .btn-primary:active {
+  transform: translateY(0);
+}
+
+.auth-form-container .btn-light {
+  padding: 0.875rem 2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.auth-form-container .btn-light:hover {
+  border-color: #DC143C;
+  color: #DC143C;
+  transform: translateY(-2px);
+}
+
+.auth-brand-section {
+  background: linear-gradient(135deg, #DC143C 0%, #B8112A 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-brand-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: pulse 15s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.auth-brand-content {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-feature-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.auth-feature-icon:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.link-primary {
+  color: #DC143C;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.link-primary::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #DC143C;
+  transition: width 0.3s ease;
+}
+
+.link-primary:hover::after {
+  width: 100%;
+}
+
+.link-primary:hover {
+  color: #B8112A;
+}
+
+.auth-footer {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.text-helper {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* SweetAlert2 Modal - Expand to show all content */
+.swal2-popup {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  padding: 2rem !important;
+}
+
+.swal2-html-container {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.swal2-content {
+  max-height: none !important;
+  overflow: visible !important;
+}
