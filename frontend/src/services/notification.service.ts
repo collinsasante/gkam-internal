@@ -145,7 +145,7 @@ class NotificationService {
       // Fetch recent customer contacts
       const contacts = await customerContactService.getAll();
       const recentContacts = contacts
-        .filter((contact: CustomerContact) => {
+        .filter(() => {
           // Assuming there's a created date field
           return true; // Show all for now
         })

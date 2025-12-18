@@ -1,0 +1,19 @@
+{
+  "name": "gkam-airtable-proxy-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker proxy for Airtable API with caching",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": ["cloudflare", "worker", "airtable", "cache", "proxy"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "wrangler": "^3.86.1",
+    "typescript": "^5.7.2"
+  }
+}

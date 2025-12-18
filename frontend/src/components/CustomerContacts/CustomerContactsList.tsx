@@ -157,7 +157,11 @@ export default function CustomerContactsList() {
       }).then(async (result: any) => {
         if (result.isConfirmed) {
           try {
+            // Generate a unique Customer ID
+            const customerId = `CUST-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
             await customerContactService.create({
+              'Customer ID': customerId,
               'Contact Name': result.value.name,
               'Phone': result.value.phone,
               'Discovery Source': result.value.source,
@@ -548,8 +552,7 @@ export default function CustomerContactsList() {
             await accountService.create({
               'Account Name': result.value.name,
               'Industry': result.value.industry || undefined,
-              'Company Size': result.value.size || undefined,
-              'Customer Contact': [contact.id],
+              'Size': result.value.size || undefined,
             });
             Swal.fire('Success!', 'Account created successfully', 'success');
             loadData();
@@ -713,11 +716,11 @@ export default function CustomerContactsList() {
           try {
             await taskService.create({
               'Task Title': result.value.title,
-              'Description': result.value.description || undefined,
+              'Task Description': result.value.description || undefined,
               'Priority': result.value.priority || undefined,
-              'Status': result.value.status || 'To Do',
-              'Due Date': result.value.dueDate || undefined,
-              'Assigned To': result.value.assignedTo ? [result.value.assignedTo] : undefined,
+              'Status': result.value.status || 'To do',
+              'Task Deadline': result.value.dueDate || undefined,
+              'Task Owner': result.value.assignedTo ? [result.value.assignedTo] : undefined,
               'Customer Contact': [contact.id],
             });
             Swal.fire('Success!', 'Task created successfully', 'success');

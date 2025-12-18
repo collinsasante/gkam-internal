@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { leadsService, teamMemberService, contactService } from '../../services/airtable.service';
-import type { Lead, TeamMember, Contact } from '../../types/airtable.types';
+import type { Lead, TeamMember } from '../../types/airtable.types';
 
 declare const Swal: any;
 

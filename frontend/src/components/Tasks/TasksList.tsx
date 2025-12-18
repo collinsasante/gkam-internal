@@ -203,7 +203,7 @@ export default function TasksList() {
           htmlContainer: 'p-0'
         },
         width: 900,
-      }).then((result) => {
+      }).then((result: { isConfirmed: boolean; isDenied: boolean }) => {
         if (result.isConfirmed) {
           handleEdit(task);
         } else if (result.isDenied) {

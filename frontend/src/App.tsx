@@ -16,7 +16,6 @@ import DiscoveryCallsList from './components/DiscoveryCalls/DiscoveryCallsList';
 import LeadsList from './components/Leads/LeadsList';
 import DealsList from './components/Deals/DealsList';
 import DesignDraftsList from './components/Design/DesignDraftsList';
-import DesignFeedbackList from './components/Design/DesignFeedbackList';
 import CompletedLabelFormsList from './components/Creatives/CompletedLabelFormsList';
 import TeamMembersList from './components/TeamMembers/TeamMembersList';
 import Login from './components/Auth/Login';

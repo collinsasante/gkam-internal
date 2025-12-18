@@ -184,7 +184,7 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
 
           return { currentPassword, newPassword };
         }
-      }).then((result) => {
+      }).then((result: { isConfirmed: boolean }) => {
         if (result.isConfirmed) {
           Swal.fire({
             title: 'Success!',
@@ -240,7 +240,7 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
 
           return { name, phone };
         }
-      }).then((result) => {
+      }).then((result: { isConfirmed: boolean }) => {
         if (result.isConfirmed) {
           Swal.fire({
             title: 'Success!',

@@ -119,7 +119,6 @@ export default function CreativesDashboard({ onNavigate }: DashboardProps) {
 
   const approvalRate = stats.totalLabelForms > 0 ? (stats.labelFormsByStatus['Approved'] / stats.totalLabelForms * 100).toFixed(1) : '0.0';
   const discoverySuccessRate = stats.totalDiscoveryCalls > 0 ? (stats.discoveryCallsByStatus['Reached'] / stats.totalDiscoveryCalls * 100).toFixed(1) : '0.0';
-  const designCompletionRate = stats.totalDesignDrafts > 0 ? ((stats.designDraftsByStatus['Production'] + stats.designDraftsByStatus['Final Handoff']) / stats.totalDesignDrafts * 100).toFixed(1) : '0.0';
 
   return (
     <div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { activityService, teamMemberService, dealsService, customerContactService } from '../../services/airtable.service';
-import type { Activity, TeamMember, Deal } from '../../types/airtable.types';
+import { activityService, teamMemberService, customerContactService } from '../../services/airtable.service';
+import type { Activity, TeamMember } from '../../types/airtable.types';
 
 declare const Swal: any;
 
@@ -52,8 +52,7 @@ export default function ActivitiesList() {
     if (typeof Swal === 'undefined') return;
 
     try {
-      const [deals, members, customerContacts] = await Promise.all([
-        dealsService.getAll(),
+      const [members, customerContacts] = await Promise.all([
         teamMemberService.getAll(),
         customerContactService.getAll(),
       ]);

@@ -16,7 +16,6 @@ export default function InteractionsList({ onNavigate }: InteractionsListProps) 
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('');
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     loadAllData();
@@ -201,15 +200,12 @@ export default function InteractionsList({ onNavigate }: InteractionsListProps) 
           document.getElementById('view-account-btn')?.addEventListener('click', (e) => {
             e.preventDefault();
             Swal.close();
-            if (interaction.fields['Account'] && interaction.fields['Account'].length > 0) {
-              setSelectedAccountId(interaction.fields['Account'][0]);
-              if (onNavigate) {
-                onNavigate('accounts');
-              }
+            if (onNavigate) {
+              onNavigate('accounts');
             }
           });
         },
-      }).then((result) => {
+      }).then((result: { isConfirmed: boolean; isDenied: boolean }) => {
         if (result.isConfirmed) {
           handleEdit(interaction);
         } else if (result.isDenied) {

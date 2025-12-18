@@ -1,0 +1,15 @@
+name = "gkam-airtable-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Environment variables (set these via Wrangler CLI or dashboard)
+# wrangler secret put AIRTABLE_API_KEY
+# wrangler secret put AIRTABLE_BASE_ID
+
+[vars]
+CACHE_TTL = 300  # 5 minutes default cache
+
+# Optionally use KV for longer-term caching
+# [[kv_namespaces]]
+# binding = "AIRTABLE_CACHE"
+# id = "your-kv-namespace-id"

@@ -80,6 +80,8 @@ export interface Activity {
     'Leads'?: string[];
     'Contact 2'?: string[];
     'COMMENTSs'?: string;
+    'Created on'?: string;
+    'Customer Name'?: string[];
   };
 }
 
@@ -95,6 +97,7 @@ export interface Task {
     'Task Start'?: string;
     'Task Deadline'?: string;
     'Task Added'?: string;
+    'Due Date'?: string;
     'Accounts'?: string[];
     'Contact'?: string[];
     'Customer Contact'?: string[];

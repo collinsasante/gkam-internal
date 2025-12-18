@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { accountService, interactionService, taskService, teamMemberService, contactService } from '../../services/airtable.service';
-import type { Account, TeamMember, Contact } from '../../types/airtable.types';
+import { accountService, interactionService, taskService, teamMemberService } from '../../services/airtable.service';
+import type { Account, TeamMember } from '../../types/airtable.types';
 
 declare const Swal: any;
 
 export default function AccountsList() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,7 +16,6 @@ export default function AccountsList() {
   useEffect(() => {
     loadAccounts();
     loadTeamMembers();
-    loadContacts();
   }, []);
 
   const loadTeamMembers = async () => {
@@ -26,15 +24,6 @@ export default function AccountsList() {
       setTeamMembers(data);
     } catch (err) {
       console.error('Failed to load team members:', err);
-    }
-  };
-
-  const loadContacts = async () => {
-    try {
-      const data = await contactService.getAll();
-      setContacts(data);
-    } catch (err) {
-      console.error('Failed to load contacts:', err);
     }
   };
 
@@ -751,11 +740,6 @@ export default function AccountsList() {
       // Generate options for team members (account owner dropdown)
       const teamMemberOptions = teamMembers.map(tm =>
         `<option value="${tm.id}">${tm.fields['Name']}</option>`
-      ).join('');
-
-      // Generate options for contacts dropdown
-      const contactOptions = contacts.map(c =>
-        `<option value="${c.id}">${c.fields['Name'] || c.fields['Email'] || c.fields['Phone']}</option>`
       ).join('');
 
       Swal.fire({

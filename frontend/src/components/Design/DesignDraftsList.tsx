@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { designDraftsService, teamMemberService } from '../../services/airtable.service';
-import type { DesignDraft, TeamMember } from '../../types/airtable.types';
+import { designDraftsService } from '../../services/airtable.service';
+import type { DesignDraft } from '../../types/airtable.types';
 
 declare const Swal: any;
 
@@ -8,7 +8,6 @@ type DesignStatus = 'Incomplete Information' | 'Unreachable' | 'Design' | 'Revis
 
 export default function DesignDraftsList() {
   const [designs, setDesigns] = useState<DesignDraft[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,12 +19,8 @@ export default function DesignDraftsList() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [designsData, membersData] = await Promise.all([
-        designDraftsService.getAll(),
-        teamMemberService.getAll(),
-      ]);
+      const designsData = await designDraftsService.getAll();
       setDesigns(designsData);
-      setTeamMembers(membersData);
       setError(null);
     } catch (err) {
       setError('Failed to load design drafts');
