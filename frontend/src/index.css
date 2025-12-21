@@ -1,0 +1,214 @@
+/* Global Color Scheme: White, Black, Red */
+:root {
+  --color-primary: #dc3545;      /* Red */
+  --color-primary-hover: #c82333; /* Darker red */
+  --color-primary-light: #f8d7da; /* Light red for backgrounds */
+
+  --color-secondary: #000000;     /* Black */
+  --color-secondary-hover: #333333; /* Dark gray */
+
+  --color-background: #ffffff;    /* White */
+  --color-text: #000000;          /* Black */
+  --color-text-secondary: #666666; /* Gray for secondary text */
+
+  --color-border: #dee2e6;        /* Light gray for borders */
+  --color-hover: #f8f9fa;         /* Very light gray for hover states */
+
+  --color-success: #dc3545;       /* Red (same as primary) */
+  --color-danger: #000000;        /* Black */
+  --color-warning: #dc3545;       /* Red */
+  --color-info: #000000;          /* Black */
+}
+
+/* Override Bootstrap and custom button colors */
+.btn-primary,
+button.btn-primary,
+a.btn-primary {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover,
+a.btn-primary:hover {
+  background-color: var(--color-primary-hover) !important;
+  border-color: var(--color-primary-hover) !important;
+}
+
+.btn-secondary,
+button.btn-secondary,
+a.btn-secondary {
+  background-color: var(--color-secondary) !important;
+  border-color: var(--color-secondary) !important;
+  color: white !important;
+}
+
+.btn-secondary:hover,
+button.btn-secondary:hover,
+a.btn-secondary:hover {
+  background-color: var(--color-secondary-hover) !important;
+  border-color: var(--color-secondary-hover) !important;
+}
+
+.btn-light {
+  background-color: white !important;
+  border-color: var(--color-border) !important;
+  color: black !important;
+}
+
+.btn-light:hover {
+  background-color: var(--color-hover) !important;
+}
+
+/* Success, danger, warning, info - all use red or black */
+.btn-success {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+.btn-danger {
+  background-color: var(--color-secondary) !important;
+  border-color: var(--color-secondary) !important;
+  color: white !important;
+}
+
+.btn-warning,
+.btn-info {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+/* Badge colors */
+.badge-primary,
+.badge-success,
+.badge-warning,
+.badge-info {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+.badge-secondary,
+.badge-danger,
+.badge-dark {
+  background-color: var(--color-secondary) !important;
+  color: white !important;
+}
+
+.badge-light {
+  background-color: white !important;
+  border: 1px solid var(--color-border) !important;
+  color: black !important;
+}
+
+/* Alert colors */
+.alert-success,
+.alert-warning,
+.alert-info {
+  background-color: var(--color-primary-light) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-secondary) !important;
+}
+
+.alert-danger {
+  background-color: #f8f9fa !important;
+  border-color: var(--color-secondary) !important;
+  color: var(--color-secondary) !important;
+}
+
+/* Progress bars */
+.progress-bar {
+  background-color: var(--color-primary) !important;
+}
+
+/* Links */
+a {
+  color: var(--color-primary) !important;
+}
+
+a:hover {
+  color: var(--color-primary-hover) !important;
+}
+
+/* Form controls focus */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Checkbox and radio */
+.form-check-input:checked {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+/* SweetAlert2 customization */
+.swal2-popup {
+  font-family: inherit !important;
+}
+
+.swal2-confirm {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.swal2-confirm:hover {
+  background-color: var(--color-primary-hover) !important;
+}
+
+.swal2-cancel {
+  background-color: white !important;
+  border: 1px solid var(--color-border) !important;
+  color: black !important;
+}
+
+.swal2-deny {
+  background-color: var(--color-secondary) !important;
+  color: white !important;
+}
+
+/* Tab colors */
+.nav-tabs .nav-link.active {
+  color: var(--color-primary) !important;
+  border-bottom-color: var(--color-primary) !important;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--color-primary-hover) !important;
+}
+
+/* Dropdown colors */
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--color-hover) !important;
+  color: var(--color-primary) !important;
+}
+
+.dropdown-item.active {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+/* Status badges specific colors */
+.status-new,
+.status-open,
+.status-pending {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+.status-done,
+.status-completed,
+.status-closed {
+  background-color: var(--color-secondary) !important;
+  color: white !important;
+}
+
+.status-in-progress {
+  background-color: white !important;
+  border: 1px solid var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}

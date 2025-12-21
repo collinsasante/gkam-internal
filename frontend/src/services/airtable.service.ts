@@ -1,4 +1,5 @@
 import Airtable from 'airtable';
+import { cacheService } from './cache.service';
 import type {
   CustomerContact,
   Contact,
@@ -83,6 +84,17 @@ async function fetchRecords<T>(tableName: string, options?: {
   maxRecords?: number;
 }): Promise<T[]> {
   try {
+    // Generate cache key
+    const cacheKey = `${tableName}:${JSON.stringify(options || {})}`;
+
+    // Check cache first
+    const cached = cacheService.get<T[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    let records: T[];
+
     if (useWorkerProxy) {
       // Use Worker proxy
       const queryParams: Record<string, string> = {};
@@ -98,7 +110,7 @@ async function fetchRecords<T>(tableName: string, options?: {
       }
 
       const response = await workerFetch<{ records: T[] }>(tableName, { queryParams });
-      return response.records || [];
+      records = response.records || [];
     } else {
       // Direct Airtable SDK
       const selectOptions: Record<string, unknown> = {};
@@ -113,15 +125,20 @@ async function fetchRecords<T>(tableName: string, options?: {
         selectOptions.maxRecords = options.maxRecords;
       }
 
-      const records = await base(tableName)
+      const airtableRecords = await base(tableName)
         .select(selectOptions)
         .all();
 
-      return records.map(record => ({
+      records = airtableRecords.map(record => ({
         id: record.id,
         fields: record.fields,
       })) as T[];
     }
+
+    // Cache the results
+    cacheService.set(cacheKey, records);
+
+    return records;
   } catch (error) {
     console.error(`Error fetching records from ${tableName}:`, error);
     throw error;
@@ -146,19 +163,26 @@ async function getRecordById<T>(tableName: string, recordId: string): Promise<T>
 // Generic create function
 async function createRecord<T>(tableName: string, fields: Record<string, unknown>): Promise<T> {
   try {
+    let result: T;
+
     if (useWorkerProxy) {
-      return await workerFetch<T>(tableName, {
+      result = await workerFetch<T>(tableName, {
         method: 'POST',
         body: { fields },
       });
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const record: any = await base(tableName).create(fields as never);
-      return {
+      result = {
         id: record.id,
         fields: record.fields,
       } as T;
     }
+
+    // Invalidate all cache entries for this table
+    cacheService.invalidatePattern(`^${tableName}:`);
+
+    return result;
   } catch (error) {
     console.error(`Error creating record in ${tableName}:`, error);
     throw error;
@@ -168,8 +192,10 @@ async function createRecord<T>(tableName: string, fields: Record<string, unknown
 // Generic update function
 async function updateRecord<T>(tableName: string, recordId: string, fields: Record<string, unknown>): Promise<T> {
   try {
+    let result: T;
+
     if (useWorkerProxy) {
-      return await workerFetch<T>(tableName, {
+      result = await workerFetch<T>(tableName, {
         method: 'PATCH',
         recordId,
         body: { fields },
@@ -177,11 +203,16 @@ async function updateRecord<T>(tableName: string, recordId: string, fields: Reco
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const record: any = await base(tableName).update(recordId, fields as never);
-      return {
+      result = {
         id: record.id,
         fields: record.fields,
       } as T;
     }
+
+    // Invalidate all cache entries for this table
+    cacheService.invalidatePattern(`^${tableName}:`);
+
+    return result;
   } catch (error) {
     console.error(`Error updating record in ${tableName}:`, error);
     throw error;
@@ -199,6 +230,9 @@ async function deleteRecord(tableName: string, recordId: string): Promise<void> 
     } else {
       await base(tableName).destroy(recordId);
     }
+
+    // Invalidate all cache entries for this table
+    cacheService.invalidatePattern(`^${tableName}:`);
   } catch (error) {
     console.error(`Error deleting record from ${tableName}:`, error);
     throw error;

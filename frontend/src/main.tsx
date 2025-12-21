@@ -7,6 +7,9 @@ import App from "./App";
 import "./assets/plugins/global/plugins.bundle.css";
 import "./assets/css/style.bundle.css";
 
+// Import custom color overrides
+import "./index.css";
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
