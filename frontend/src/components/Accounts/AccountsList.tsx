@@ -90,133 +90,112 @@ export default function AccountsList() {
         : '';
 
       Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-shop fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-            <span class="path3"></span>
-            <span class="path4"></span>
-            <span class="path5"></span>
-          </i>
-          <span>${account.fields['Account Name']}</span>
-        </div>`,
+        title: `${account.fields['Account Name']}`,
         html: `
-          <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-            <!-- Logo -->
-            <div class="text-center mb-5">
-              ${logoHtml}
-            </div>
+          <!-- Logo Section -->
+          ${logoHtml ? `<div class="modal-section" style="text-align: center;">${logoHtml}</div>` : ''}
 
-            <!-- Action Buttons Row -->
-            <div class="d-flex flex-wrap gap-2 mb-5">
-              <button class="btn btn-sm btn-light-primary" id="edit-account-btn">
-                <i class="ki-duotone ki-pencil fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
-                Edit
-              </button>
-              <button class="btn btn-sm btn-light-success" id="add-interaction-btn">
-                <i class="ki-duotone ki-messages fs-4 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-                Add Interaction
-              </button>
-              <button class="btn btn-sm btn-light-warning" id="add-task-btn">
-                <i class="ki-duotone ki-check-square fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
-                Add Task
-              </button>
-              <button class="btn btn-sm btn-light-danger" id="delete-account-btn">
-                <i class="ki-duotone ki-trash fs-4 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-                Delete
-              </button>
-            </div>
-
-            <!-- Account Information -->
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-primary">
-                <h6 class="card-title mb-0 text-primary">
-                  <i class="ki-duotone ki-abstract-26 fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  Business Details
-                </h6>
-              </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Industry</label>
-                    <div><span class="badge badge-light-primary fs-6">${account.fields['Industry'] || 'N/A'}</span></div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Company Size</label>
-                    <div class="text-gray-800 fw-bold">${account.fields['Size'] || 'N/A'}</div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Status</label>
-                    <div>
-                      ${account.fields['Account Status'] === 'Active'
-                        ? '<span class="badge badge-light-success fs-6">Active</span>'
-                        : '<span class="badge badge-light-danger fs-6">Inactive</span>'}
-                    </div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Platform</label>
-                    <div><span class="badge badge-light-info fs-6">${account.fields['Platform'] || 'N/A'}</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Contact & Location -->
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-info">
-                <h6 class="card-title mb-0 text-info">
-                  <i class="ki-duotone ki-geolocation fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  Contact & Location
-                </h6>
-              </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Location</label>
-                    <div class="text-gray-800 fw-bold">${account.fields['Location'] || 'N/A'}</div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">City</label>
-                    <div class="text-gray-800 fw-bold">${account.fields['City'] || 'N/A'}</div>
-                  </div>
-                  <div class="col-12">
-                    <label class="text-muted fs-7 fw-semibold">Website</label>
-                    <div class="text-gray-800 fw-bold">${account.fields['Company Website'] ? `<a href="${account.fields['Company Website']}" target="_blank" class="text-primary">${account.fields['Company Website']}</a>` : 'N/A'}</div>
-                  </div>
-                  <div class="col-12">
-                    <label class="text-muted fs-7 fw-semibold">Social Media Handle</label>
-                    <div class="text-gray-800 fw-bold">${account.fields['Social Media Handle'] || 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            ${account.fields['Notes'] ? `
-            <!-- Notes -->
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-warning">
-                <h6 class="card-title mb-0 text-warning">
-                  <i class="ki-duotone ki-note-2 fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                    <span class="path3"></span>
-                    <span class="path4"></span>
-                  </i>
-                  Special Notes
-                </h6>
-              </div>
-              <div class="card-body">
-                <div class="text-gray-800">${account.fields['Notes']}</div>
-              </div>
-            </div>
-            ` : ''}
+          <!-- Action Buttons Bar -->
+          <div class="modal-actions-bar">
+            <button class="btn btn-primary" id="edit-account-btn">
+              <i class="ki-duotone ki-pencil fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
+              Edit
+            </button>
+            <button class="btn btn-light" id="add-interaction-btn">
+              <i class="ki-duotone ki-messages fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+              Add Interaction
+            </button>
+            <button class="btn btn-light" id="add-task-btn">
+              <i class="ki-duotone ki-check-square fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
+              Add Task
+            </button>
+            <button class="btn btn-secondary" id="delete-account-btn">
+              <i class="ki-duotone ki-trash fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+              Delete
+            </button>
           </div>
+
+          <!-- Business Details Section -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="ki-duotone ki-abstract-26 fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+              </i>
+              Business Details
+            </div>
+            <div class="modal-info-grid">
+              <div class="modal-info-item">
+                <div class="modal-info-label">Industry</div>
+                <div class="modal-info-value">
+                  <span class="badge badge-primary">${account.fields['Industry'] || 'Not specified'}</span>
+                </div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Company Size</div>
+                <div class="modal-info-value">${account.fields['Size'] || 'Not specified'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Status</div>
+                <div class="modal-info-value">
+                  ${account.fields['Account Status'] === 'Active'
+                    ? '<span class="badge badge-primary">Active</span>'
+                    : '<span class="badge badge-secondary">Inactive</span>'}
+                </div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Platform</div>
+                <div class="modal-info-value">
+                  <span class="badge badge-light">${account.fields['Platform'] || 'Not specified'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location & Contact Section -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="ki-duotone ki-geolocation fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+              </i>
+              Location & Contact
+            </div>
+            <div class="modal-info-grid">
+              <div class="modal-info-item">
+                <div class="modal-info-label">Location</div>
+                <div class="modal-info-value">${account.fields['Location'] || 'Not specified'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">City</div>
+                <div class="modal-info-value">${account.fields['City'] || 'Not specified'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Website</div>
+                <div class="modal-info-value">${account.fields['Company Website'] ? `<a href="${account.fields['Company Website']}" target="_blank">${account.fields['Company Website']}</a>` : 'Not specified'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Social Media</div>
+                <div class="modal-info-value">${account.fields['Social Media Handle'] || 'Not specified'}</div>
+              </div>
+            </div>
+          </div>
+
+          ${account.fields['Notes'] ? `
+          <!-- Notes Section -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="ki-duotone ki-note-2 fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+                <span class="path3"></span>
+                <span class="path4"></span>
+              </i>
+              Special Notes
+            </div>
+            <div class="modal-info-value">${account.fields['Notes']}</div>
+          </div>
+          ` : ''}
         `,
         showConfirmButton: false,
         showCloseButton: true,
