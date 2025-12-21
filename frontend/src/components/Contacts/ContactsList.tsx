@@ -37,19 +37,12 @@ export default function ContactsList() {
       const teamMembers = await teamMemberService.getAll();
 
       const { value: formValues } = await Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-add-user fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-            <span class="path3"></span>
-          </i>
-          <span>Create New Contact</span>
-        </div>`,
+        title: 'Create New Contact',
         html: `
-          <div class="text-start p-4">
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-phone fs-4 me-2">
+          <div class="modal-form-section">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-phone fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                 </i>
@@ -62,28 +55,28 @@ export default function ContactsList() {
                 required
               />
             </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-profile-circle fs-4 me-2">
+            <div class="modal-form-group">
+              <label class="modal-form-label">
+                <i class="ki-duotone ki-profile-circle fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                   <span class="path3"></span>
                 </i>
-                Name
+                Full Name
               </label>
               <input
                 id="name"
                 class="form-control form-control-solid"
-                placeholder="Enter name"
+                placeholder="Enter full name"
               />
             </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-sms fs-4 me-2">
+            <div class="modal-form-group">
+              <label class="modal-form-label">
+                <i class="ki-duotone ki-sms fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                 </i>
-                Email
+                Email Address
               </label>
               <input
                 id="email"
@@ -92,14 +85,14 @@ export default function ContactsList() {
                 placeholder="Enter email address"
               />
             </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-user-tick fs-4 me-2">
+            <div class="modal-form-group">
+              <label class="modal-form-label">
+                <i class="ki-duotone ki-user-tick fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                   <span class="path3"></span>
                 </i>
-                Created by
+                Created By
               </label>
               <select id="createdBy" class="form-select form-select-solid">
                 <option value="">Select creator...</option>
@@ -170,113 +163,110 @@ export default function ContactsList() {
   const handleContactClick = async (contact: Contact) => {
     if (typeof Swal === 'undefined') return;
 
-    const result = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-profile-user fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-          <span class="path3"></span>
-          <span class="path4"></span>
-        </i>
-        <span>${contact.fields['Name'] || 'Contact Details'}</span>
-      </div>`,
+    await Swal.fire({
+      title: `${contact.fields['Name'] || 'Contact Details'}`,
       html: `
-        <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-          <!-- Contact Information -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-primary">
-              <h6 class="card-title mb-0 text-primary">
-                <i class="ki-duotone ki-profile-circle fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Contact Information
-              </h6>
+        <!-- Action Buttons Bar -->
+        <div class="modal-actions-bar">
+          <button class="btn btn-primary" data-action="add-activity">
+            <i class="ki-duotone ki-calendar-add fs-5 me-1">
+              <span class="path1"></span>
+              <span class="path2"></span>
+              <span class="path3"></span>
+              <span class="path4"></span>
+            </i>
+            Add Activity
+          </button>
+          <button class="btn btn-light" data-action="edit">
+            <i class="ki-duotone ki-pencil fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
+            Edit
+          </button>
+          <button class="btn btn-secondary" data-action="delete">
+            <i class="ki-duotone ki-trash fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+            Delete
+          </button>
+        </div>
+
+        <!-- Contact Information Section -->
+        <div class="modal-section">
+          <div class="modal-section-title">
+            <i class="ki-duotone ki-profile-circle fs-4">
+              <span class="path1"></span>
+              <span class="path2"></span>
+              <span class="path3"></span>
+            </i>
+            Contact Information
+          </div>
+          <div class="modal-info-grid">
+            <div class="modal-info-item">
+              <div class="modal-info-label">Contact ID</div>
+              <div class="modal-info-value">${contact.fields['Contact ID'] || 'N/A'}</div>
             </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Contact ID</label>
-                  <div class="text-gray-800 fw-bold">${contact.fields['Contact ID'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Phone</label>
-                  <div class="text-gray-800 fw-bold">${contact.fields['Phone'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Email</label>
-                  <div class="text-gray-800 fw-bold">${contact.fields['Email'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Created On</label>
-                  <div class="text-gray-800 fw-bold">${contact.fields['Created on'] ? new Date(contact.fields['Created on']).toLocaleDateString() : 'N/A'}</div>
-                </div>
-              </div>
+            <div class="modal-info-item">
+              <div class="modal-info-label">Phone Number</div>
+              <div class="modal-info-value">${contact.fields['Phone'] || 'N/A'}</div>
+            </div>
+            <div class="modal-info-item">
+              <div class="modal-info-label">Email Address</div>
+              <div class="modal-info-value">${contact.fields['Email'] || 'N/A'}</div>
+            </div>
+            <div class="modal-info-item">
+              <div class="modal-info-label">Created On</div>
+              <div class="modal-info-value">${contact.fields['Created on'] ? new Date(contact.fields['Created on']).toLocaleDateString() : 'N/A'}</div>
             </div>
           </div>
+        </div>
 
-          <!-- Lead Status -->
-          ${contact.fields['Lead Status'] && Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].length > 0 ? `
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-info">
-              <h6 class="card-title mb-0 text-info">
-                <i class="ki-duotone ki-chart-simple fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Lead Status
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="d-flex flex-wrap gap-2">
+        <!-- Lead Status Section -->
+        ${contact.fields['Lead Status'] && Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].length > 0 ? `
+        <div class="modal-section">
+          <div class="modal-section-title">
+            <i class="ki-duotone ki-chart-simple fs-4">
+              <span class="path1"></span>
+              <span class="path2"></span>
+              <span class="path3"></span>
+              <span class="path4"></span>
+            </i>
+            Lead Status
+          </div>
+          <div class="modal-info-grid">
+            <div class="modal-info-item">
+              <div class="modal-info-label">Status</div>
+              <div class="modal-info-value">
                 ${contact.fields['Lead Status'].map(status => {
-                  const statusMap: Record<string, string> = {
-                    'New Lead': 'badge-light-primary',
-                    'Attempted to Contact': 'badge-light-warning',
-                    'Contacted': 'badge-light-info',
-                    'Qualified': 'badge-light-success',
-                    'Unqualified': 'badge-light-danger',
-                  };
-                  const badgeClass = statusMap[status] || 'badge-light-secondary';
-                  return `<span class="badge ${badgeClass} fs-6">${status}</span>`;
+                  return `<span class="badge badge-primary me-1 mb-1">${status}</span>`;
                 }).join('')}
               </div>
             </div>
           </div>
-          ` : ''}
         </div>
+        ` : ''}
       `,
-      showCancelButton: true,
-      showDenyButton: true,
-      showConfirmButton: true,
-      confirmButtonText: '<i class="ki-duotone ki-plus fs-2"></i> Add Activity',
-      denyButtonText: '<i class="ki-duotone ki-pencil fs-2"></i> Edit',
-      cancelButtonText: '<i class="ki-duotone ki-trash fs-2"></i> Delete',
+      showConfirmButton: false,
+      showCloseButton: true,
       buttonsStyling: false,
       customClass: {
-        confirmButton: 'btn btn-primary',
-        denyButton: 'btn btn-info',
-        cancelButton: 'btn btn-danger me-3',
         popup: 'rounded',
         title: 'fs-4',
         htmlContainer: 'p-0'
       },
       width: 900,
+      didOpen: () => {
+        // Add event listeners to action buttons
+        document.querySelector('[data-action="add-activity"]')?.addEventListener('click', () => {
+          Swal.close();
+          handleAddActivity(contact);
+        });
+        document.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
+          Swal.close();
+          handleEditContact(contact);
+        });
+        document.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
+          Swal.close();
+          handleDeleteContact(contact);
+        });
+      },
     });
-
-    if (result.isConfirmed) {
-      // Add Activity
-      handleAddActivity(contact);
-    } else if (result.isDenied) {
-      // Edit
-      handleEditContact(contact);
-    } else if (result.dismiss === Swal.DismissReason.cancel) {
-      // Delete (when cancel button is clicked, not ESC or backdrop)
-      handleDeleteContact(contact);
-    }
   };
 
   const handleAddActivity = async (contact: Contact) => {

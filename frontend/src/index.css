@@ -212,3 +212,185 @@ a:hover {
   border: 1px solid var(--color-primary) !important;
   color: var(--color-primary) !important;
 }
+
+/* Professional Modal Styling */
+.swal2-popup {
+  border-radius: 8px !important;
+  padding: 0 !important;
+}
+
+.swal2-title {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: var(--color-text) !important;
+  padding: 1.5rem 1.5rem 1rem !important;
+  margin: 0 !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.swal2-html-container {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-height: 70vh !important;
+  overflow-y: auto !important;
+}
+
+/* Modal action buttons styling */
+.modal-actions-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background-color: #fafafa;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.modal-actions-bar .btn {
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.modal-actions-bar .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Modal content sections */
+.modal-section {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-section:last-child {
+  border-bottom: none;
+}
+
+.modal-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.modal-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.modal-info-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.modal-info-value {
+  font-size: 0.95rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* Form styling within modals */
+.modal-form-section {
+  padding: 1.5rem;
+}
+
+.modal-form-group {
+  margin-bottom: 1.25rem;
+}
+
+.modal-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.modal-form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-form-label.required::after {
+  content: '*';
+  color: var(--color-primary);
+  margin-left: 0.25rem;
+}
+
+/* Clean card styling for modal sections */
+.modal-card {
+  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.modal-card:last-child {
+  margin-bottom: 0;
+}
+
+.modal-card-header {
+  padding: 0.75rem 1rem;
+  background-color: #fafafa;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.modal-card-body {
+  padding: 1rem;
+}
+
+/* Badge styling in modals */
+.modal-badge {
+  display: inline-block;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Remove old colored backgrounds from modal cards */
+.bg-light-primary,
+.bg-light-success,
+.bg-light-info,
+.bg-light-warning {
+  background-color: #fafafa !important;
+}
+
+.text-primary,
+.text-success,
+.text-info,
+.text-warning {
+  color: var(--color-text) !important;
+}
+
+/* Icon colors in modals - use black or red only */
+.ki-duotone.text-primary,
+.ki-duotone.text-success,
+.ki-duotone.text-info,
+.ki-duotone.text-warning {
+  color: var(--color-primary) !important;
+}

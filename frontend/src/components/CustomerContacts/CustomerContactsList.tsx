@@ -102,18 +102,37 @@ export default function CustomerContactsList() {
       Swal.fire({
         title: 'Add New Customer Contact',
         html: `
-          <div class="d-flex flex-column gap-3">
-            <div class="fv-row text-start">
-              <label class="form-label required">Contact Name</label>
-              <input type="text" class="form-control" id="create-name" placeholder="Enter contact name" />
+          <div class="modal-form-section">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-profile-circle fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                  <span class="path3"></span>
+                </i>
+                Contact Name
+              </label>
+              <input type="text" class="form-control form-control-solid" id="create-name" placeholder="Enter contact name" />
             </div>
-            <div class="fv-row text-start">
-              <label class="form-label required">Phone</label>
-              <input type="text" class="form-control" id="create-phone" placeholder="Enter phone number" />
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-phone fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                </i>
+                Phone Number
+              </label>
+              <input type="text" class="form-control form-control-solid" id="create-phone" placeholder="+234 XXX XXX XXXX" />
             </div>
-            <div class="fv-row text-start">
-              <label class="form-label required">Discovery Source</label>
-              <select class="form-select" id="create-source">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-abstract-26 fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                </i>
+                Discovery Source
+              </label>
+              <select class="form-select form-select-solid" id="create-source">
                 <option value="">Select source...</option>
                 <option value="WhatsApp">WhatsApp</option>
                 <option value="Facebook">Facebook</option>
@@ -124,9 +143,15 @@ export default function CustomerContactsList() {
                 <option value="Lead">Lead</option>
               </select>
             </div>
-            <div class="fv-row text-start">
-              <label class="form-label">Created By</label>
-              <select class="form-select" id="create-createdby">
+            <div class="modal-form-group">
+              <label class="modal-form-label">
+                <i class="ki-duotone ki-user fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                </i>
+                Created By
+              </label>
+              <select class="form-select form-select-solid" id="create-createdby">
                 <option value="">Select team member...</option>
                 ${teamMemberOptions}
               </select>
@@ -207,107 +232,90 @@ export default function CustomerContactsList() {
         : 'Unassigned';
 
       Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-user-tick fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-            <span class="path3"></span>
-          </i>
-          <span>${contact.fields['Contact Name']}</span>
-        </div>`,
+        title: `${contact.fields['Contact Name']}`,
         html: `
-          <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-            <!-- Action Buttons Row -->
-            <div class="d-flex flex-wrap gap-2 mb-5">
-              <button class="btn btn-sm btn-light-primary" id="edit-contact-btn">
-                <i class="ki-duotone ki-pencil fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
-                Edit
-              </button>
-              <button class="btn btn-sm btn-light-info" id="add-account-btn">
-                <i class="ki-duotone ki-shop fs-4 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-                Account
-              </button>
-              <button class="btn btn-sm btn-light-success" id="add-interaction-btn">
-                <i class="ki-duotone ki-messages fs-4 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-                Interaction
-              </button>
-              <button class="btn btn-sm btn-light-warning" id="add-task-btn">
-                <i class="ki-duotone ki-check-square fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
-                Task
-              </button>
-              <button class="btn btn-sm btn-light-danger" id="delete-contact-btn">
-                <i class="ki-duotone ki-trash fs-4 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-                Delete
-              </button>
-            </div>
+          <!-- Action Buttons Bar -->
+          <div class="modal-actions-bar">
+            <button class="btn btn-primary" id="edit-contact-btn">
+              <i class="ki-duotone ki-pencil fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
+              Edit
+            </button>
+            <button class="btn btn-light" id="add-account-btn">
+              <i class="ki-duotone ki-shop fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+              Add Account
+            </button>
+            <button class="btn btn-light" id="add-interaction-btn">
+              <i class="ki-duotone ki-messages fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+              Add Interaction
+            </button>
+            <button class="btn btn-light" id="add-task-btn">
+              <i class="ki-duotone ki-check-square fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
+              Add Task
+            </button>
+            <button class="btn btn-secondary" id="delete-contact-btn">
+              <i class="ki-duotone ki-trash fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+              Delete
+            </button>
+          </div>
 
-            <!-- Contact Information -->
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-primary">
-                <h6 class="card-title mb-0 text-primary">
-                  <i class="ki-duotone ki-profile-circle fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                    <span class="path3"></span>
-                  </i>
-                  Contact Information
-                </h6>
+          <!-- Contact Information Section -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="ki-duotone ki-profile-circle fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+                <span class="path3"></span>
+              </i>
+              Contact Information
+            </div>
+            <div class="modal-info-grid">
+              <div class="modal-info-item">
+                <div class="modal-info-label">Customer ID</div>
+                <div class="modal-info-value">${contact.fields['Customer ID'] || 'N/A'}</div>
               </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Customer ID</label>
-                    <div class="text-gray-800 fw-bold">${contact.fields['Customer ID'] || 'N/A'}</div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Phone</label>
-                    <div class="text-gray-800">${contact.fields['Phone'] || 'N/A'}</div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Discovery Source</label>
-                    <div>
-                      <span class="badge badge-light-info fs-7">${contact.fields['Discovery Source'] || 'N/A'}</span>
-                    </div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Account Manager</label>
-                    <div class="text-gray-800">${accountManagerName}</div>
-                  </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Phone Number</div>
+                <div class="modal-info-value">${contact.fields['Phone'] || 'N/A'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Discovery Source</div>
+                <div class="modal-info-value">
+                  <span class="badge badge-primary">${contact.fields['Discovery Source'] || 'N/A'}</span>
                 </div>
               </div>
-            </div>
-
-            <!-- Activity & Tags -->
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-success">
-                <h6 class="card-title mb-0 text-success">
-                  <i class="ki-duotone ki-tag fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                    <span class="path3"></span>
-                  </i>
-                  Tags & Activity
-                </h6>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Account Manager</div>
+                <div class="modal-info-value">${accountManagerName}</div>
               </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-12">
-                    <label class="text-muted fs-7 fw-semibold">Tags</label>
-                    <div>
-                      ${Array.isArray(contact.fields['Tag']) && contact.fields['Tag'].length > 0
-                        ? contact.fields['Tag'].map(tag => `<span class="badge badge-light-warning me-2 fs-7">${tag}</span>`).join('')
-                        : '<span class="text-gray-600">No tags</span>'}
-                    </div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Last Interaction</label>
-                    <div class="text-gray-800">${contact.fields['Last Interaction'] || 'Never'}</div>
-                  </div>
-                  <div class="col-6">
-                    <label class="text-muted fs-7 fw-semibold">Created By</label>
-                    <div class="text-gray-800">${createdByName}</div>
-                  </div>
+            </div>
+          </div>
+
+          <!-- Activity & Tags Section -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="ki-duotone ki-tag fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+                <span class="path3"></span>
+              </i>
+              Tags & Activity
+            </div>
+            <div class="modal-info-grid">
+              <div class="modal-info-item">
+                <div class="modal-info-label">Tags</div>
+                <div class="modal-info-value">
+                  ${Array.isArray(contact.fields['Tag']) && contact.fields['Tag'].length > 0
+                    ? contact.fields['Tag'].map(tag => `<span class="badge badge-light me-1 mb-1">${tag}</span>`).join('')
+                    : '<span style="color: #999;">No tags</span>'}
                 </div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Last Interaction</div>
+                <div class="modal-info-value">${contact.fields['Last Interaction'] || 'Never'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Created By</div>
+                <div class="modal-info-value">${createdByName}</div>
               </div>
             </div>
           </div>
@@ -354,18 +362,12 @@ export default function CustomerContactsList() {
       ).join('');
 
       Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-pencil fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-          </i>
-          <span>Edit Customer Contact</span>
-        </div>`,
+        title: 'Edit Customer Contact',
         html: `
-          <div class="text-start p-4">
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-profile-circle fs-4 me-2">
+          <div class="modal-form-section">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-profile-circle fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                   <span class="path3"></span>
@@ -381,13 +383,13 @@ export default function CustomerContactsList() {
               />
             </div>
 
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-phone fs-4 me-2">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-phone fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                 </i>
-                Phone
+                Phone Number
               </label>
               <input
                 type="text"
@@ -398,28 +400,28 @@ export default function CustomerContactsList() {
               />
             </div>
 
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-abstract-26 fs-4 me-2">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-abstract-26 fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                 </i>
                 Discovery Source
               </label>
               <select class="form-select form-select-solid" id="edit-source">
-                <option value="WhatsApp" ${contact.fields['Discovery Source'] === 'WhatsApp' ? 'selected' : ''}>💬 WhatsApp</option>
-                <option value="Facebook" ${contact.fields['Discovery Source'] === 'Facebook' ? 'selected' : ''}>📘 Facebook</option>
-                <option value="Instagram" ${contact.fields['Discovery Source'] === 'Instagram' ? 'selected' : ''}>📷 Instagram</option>
-                <option value="TikTok" ${contact.fields['Discovery Source'] === 'TikTok' ? 'selected' : ''}>🎵 TikTok</option>
-                <option value="Call" ${contact.fields['Discovery Source'] === 'Call' ? 'selected' : ''}>📞 Call</option>
-                <option value="Walk-In" ${contact.fields['Discovery Source'] === 'Walk-In' ? 'selected' : ''}>🚶 Walk-In</option>
-                <option value="Lead" ${contact.fields['Discovery Source'] === 'Lead' ? 'selected' : ''}>🎯 Lead</option>
+                <option value="WhatsApp" ${contact.fields['Discovery Source'] === 'WhatsApp' ? 'selected' : ''}>WhatsApp</option>
+                <option value="Facebook" ${contact.fields['Discovery Source'] === 'Facebook' ? 'selected' : ''}>Facebook</option>
+                <option value="Instagram" ${contact.fields['Discovery Source'] === 'Instagram' ? 'selected' : ''}>Instagram</option>
+                <option value="TikTok" ${contact.fields['Discovery Source'] === 'TikTok' ? 'selected' : ''}>TikTok</option>
+                <option value="Call" ${contact.fields['Discovery Source'] === 'Call' ? 'selected' : ''}>Call</option>
+                <option value="Walk-In" ${contact.fields['Discovery Source'] === 'Walk-In' ? 'selected' : ''}>Walk-In</option>
+                <option value="Lead" ${contact.fields['Discovery Source'] === 'Lead' ? 'selected' : ''}>Lead</option>
               </select>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-user fs-4 me-2">
+            <div class="modal-form-group">
+              <label class="modal-form-label">
+                <i class="ki-duotone ki-user fs-5">
                   <span class="path1"></span>
                   <span class="path2"></span>
                 </i>
@@ -434,8 +436,8 @@ export default function CustomerContactsList() {
           </div>
         `,
         showCancelButton: true,
-        confirmButtonText: '<i class="ki-duotone ki-check fs-2"></i> Save Changes',
-        cancelButtonText: '<i class="ki-duotone ki-cross fs-2"></i> Cancel',
+        confirmButtonText: 'Save Changes',
+        cancelButtonText: 'Cancel',
         buttonsStyling: false,
         customClass: {
           confirmButton: 'btn btn-primary',
