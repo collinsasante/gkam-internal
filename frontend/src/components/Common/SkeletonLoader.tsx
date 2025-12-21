@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface SkeletonLoaderProps {
   type?: 'table' | 'kanban' | 'card' | 'list';
   count?: number;

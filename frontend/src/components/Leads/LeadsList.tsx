@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { leadsService, teamMemberService, contactService } from '../../services/airtable.service';
 import type { Lead, TeamMember } from '../../types/airtable.types';
+import SkeletonLoader from '../Common/SkeletonLoader';
 
 declare const Swal: any;
 
@@ -466,17 +467,17 @@ export default function LeadsList() {
   const getColumnColor = (status: LeadStatus) => {
     switch (status) {
       case 'New Lead':
-        return '#009ef7';
+        return '#dc3545';      // Red
       case 'Attempted to Contact':
-        return '#ffc700';
+        return '#000000';      // Black
       case 'Contacted':
-        return '#7239ea';
+        return '#dc3545';      // Red
       case 'Qualified':
-        return '#50cd89';
+        return '#000000';      // Black
       case 'Unqualified':
-        return '#f1416c';
+        return '#dc3545';      // Red
       default:
-        return '#a1a5b7';
+        return '#dee2e6';      // Light gray
     }
   };
 
@@ -503,9 +504,17 @@ export default function LeadsList() {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="card">
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <div style={{ height: '40px', width: '300px', backgroundColor: '#f8f9fa', borderRadius: '4px' }} />
+          </div>
+          <div className="card-toolbar">
+            <div style={{ height: '40px', width: '120px', backgroundColor: '#f8f9fa', borderRadius: '4px' }} />
+          </div>
+        </div>
+        <div className="card-body py-4">
+          <SkeletonLoader type="kanban" />
         </div>
       </div>
     );
