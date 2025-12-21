@@ -95,6 +95,181 @@ export default function TeamMembersList() {
     return colors[index];
   };
 
+  const handleMemberClick = (member: TeamMember) => {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: member.fields['Name'] || 'Team Member',
+        html: `
+          <!-- Profile Avatar -->
+          <div class="modal-section" style="text-align: center;">
+            <div class="symbol symbol-circle symbol-100px d-inline-block">
+              <div class="symbol-label fs-1" style="background-color: ${getRandomColor(member.fields['Name'])}">
+                <span class="text-white fw-bold">
+                  ${getInitials(member.fields['Name'])}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Information -->
+          <div class="modal-section">
+            <div class="modal-section-title">
+              <i class="ki-duotone ki-user-tick fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+                <span class="path3"></span>
+              </i>
+              Profile Information
+            </div>
+            <div class="modal-info-grid">
+              <div class="modal-info-item">
+                <div class="modal-info-label">Full Name</div>
+                <div class="modal-info-value">${member.fields['Name'] || 'N/A'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Email Address</div>
+                <div class="modal-info-value">${member.fields['Email'] ? `<a href="mailto:${member.fields['Email']}">${member.fields['Email']}</a>` : 'N/A'}</div>
+              </div>
+              <div class="modal-info-item">
+                <div class="modal-info-label">Role</div>
+                <div class="modal-info-value">
+                  <span class="badge badge-primary">${member.fields['Role'] || 'Team Member'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `,
+        showConfirmButton: true,
+        confirmButtonText: 'Close',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-light',
+          popup: 'rounded',
+          title: 'fs-4',
+          htmlContainer: 'p-0'
+        },
+        width: 600,
+      });
+    }
+  };
+
+  const handleAddTeamMember = () => {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: 'Add Team Member',
+        html: `
+          <div class="modal-form-section">
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-profile-circle fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                  <span class="path3"></span>
+                </i>
+                Full Name
+              </label>
+              <input
+                type="text"
+                class="form-control form-control-solid"
+                id="member-name"
+                placeholder="Enter full name"
+              />
+            </div>
+            <div class="modal-form-group">
+              <label class="modal-form-label required">
+                <i class="ki-duotone ki-sms fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                </i>
+                Email Address
+              </label>
+              <input
+                type="email"
+                class="form-control form-control-solid"
+                id="member-email"
+                placeholder="Enter email address"
+              />
+            </div>
+            <div class="modal-form-group">
+              <label class="modal-form-label">
+                <i class="ki-duotone ki-briefcase fs-5">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                </i>
+                Role
+              </label>
+              <input
+                type="text"
+                class="form-control form-control-solid"
+                id="member-role"
+                placeholder="e.g., Sales Manager, Designer"
+              />
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Add Member',
+        cancelButtonText: 'Cancel',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-primary',
+          cancelButton: 'btn btn-light me-3',
+          popup: 'rounded',
+          title: 'fs-4',
+          htmlContainer: 'p-0'
+        },
+        width: 600,
+        preConfirm: () => {
+          const name = (document.getElementById('member-name') as HTMLInputElement)?.value;
+          const email = (document.getElementById('member-email') as HTMLInputElement)?.value;
+          const role = (document.getElementById('member-role') as HTMLInputElement)?.value;
+
+          if (!name || !email) {
+            Swal.showValidationMessage('Please fill in all required fields');
+            return false;
+          }
+
+          return { name, email, role };
+        },
+      }).then(async (result: any) => {
+        if (result.isConfirmed) {
+          try {
+            await teamMemberService.create({
+              'Name': result.value.name,
+              'Email': result.value.email,
+              'Role': result.value.role || 'Team Member',
+            });
+
+            Swal.fire({
+              title: 'Success!',
+              text: 'Team member has been added',
+              icon: 'success',
+              confirmButtonText: 'OK',
+              buttonsStyling: false,
+              customClass: {
+                confirmButton: 'btn btn-primary',
+              },
+            });
+
+            loadData();
+          } catch (error) {
+            console.error('Error creating team member:', error);
+            Swal.fire({
+              title: 'Error!',
+              text: 'Failed to create team member',
+              icon: 'error',
+              confirmButtonText: 'OK',
+              buttonsStyling: false,
+              customClass: {
+                confirmButton: 'btn btn-primary',
+              },
+            });
+          }
+        }
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
@@ -139,9 +314,16 @@ export default function TeamMembersList() {
         </div>
         <div className="card-toolbar">
           <div className="d-flex align-items-center gap-3">
-            <div className="badge badge-light-primary fs-6">
+            <div className="badge badge-light fs-6">
               Total Members: {teamMembers.length}
             </div>
+            <button className="btn btn-primary btn-sm" onClick={handleAddTeamMember}>
+              <i className="ki-duotone ki-plus fs-2">
+                <span className="path1"></span>
+                <span className="path2"></span>
+              </i>
+              Add Team Member
+            </button>
           </div>
         </div>
       </div>
@@ -153,12 +335,16 @@ export default function TeamMembersList() {
               <th className="min-w-250px">Team Member</th>
               <th className="min-w-150px">Email</th>
               <th className="min-w-150px">Role</th>
-              <th className="text-end min-w-100px">Actions</th>
             </tr>
           </thead>
           <tbody className="text-gray-600 fw-semibold">
             {teamMembers.map((member) => (
-              <tr key={member.id}>
+              <tr
+                key={member.id}
+                style={{ cursor: 'pointer' }}
+                onClick={() => handleMemberClick(member)}
+                className="hover-bg-light-primary"
+              >
                 <td>
                   <div className="d-flex align-items-center">
                     <div className="symbol symbol-circle symbol-50px overflow-hidden me-3">
@@ -188,106 +374,9 @@ export default function TeamMembersList() {
                   )}
                 </td>
                 <td>
-                  <span className="badge badge-light-info">
+                  <span className="badge badge-primary">
                     {member.fields['Role'] || 'Team Member'}
                   </span>
-                </td>
-                <td className="text-end">
-                  <button
-                    className="btn btn-sm btn-light btn-active-light-primary"
-                    onClick={() => {
-                      if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                          title: `<div class="d-flex align-items-center">
-                            <i class="ki-duotone ki-profile-user fs-2x text-primary me-3">
-                              <span class="path1"></span>
-                              <span class="path2"></span>
-                              <span class="path3"></span>
-                              <span class="path4"></span>
-                            </i>
-                            <span>${member.fields['Name'] || 'Team Member'}</span>
-                          </div>`,
-                          html: `
-                            <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-                              <!-- Profile Avatar -->
-                              <div class="text-center mb-5">
-                                <div class="symbol symbol-circle symbol-100px d-inline-block">
-                                  <div class="symbol-label fs-1" style="background-color: ${getRandomColor(member.fields['Name'])}">
-                                    <span class="text-white fw-bold">
-                                      ${getInitials(member.fields['Name'])}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <!-- Team Member Information -->
-                              <div class="card shadow-sm mb-4">
-                                <div class="card-header bg-light-primary">
-                                  <h6 class="card-title mb-0 text-primary">
-                                    <i class="ki-duotone ki-user-tick fs-3 me-2">
-                                      <span class="path1"></span>
-                                      <span class="path2"></span>
-                                      <span class="path3"></span>
-                                    </i>
-                                    Profile Information
-                                  </h6>
-                                </div>
-                                <div class="card-body">
-                                  <div class="row g-3">
-                                    <div class="col-12">
-                                      <label class="text-muted fs-7 fw-semibold">Name</label>
-                                      <div class="text-gray-800 fw-bold">${member.fields['Name'] || 'N/A'}</div>
-                                    </div>
-                                    <div class="col-12">
-                                      <label class="text-muted fs-7 fw-semibold">Email</label>
-                                      <div class="text-gray-800">${member.fields['Email'] ? `<a href="mailto:${member.fields['Email']}" class="text-primary">${member.fields['Email']}</a>` : 'N/A'}</div>
-                                    </div>
-                                    <div class="col-12">
-                                      <label class="text-muted fs-7 fw-semibold">Role</label>
-                                      <div><span class="badge badge-light-info fs-6">${member.fields['Role'] || 'Team Member'}</span></div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <!-- System Info -->
-                              <div class="card shadow-sm mb-4">
-                                <div class="card-header bg-light-secondary">
-                                  <h6 class="card-title mb-0 text-secondary">
-                                    <i class="ki-duotone ki-information-4 fs-3 me-2">
-                                      <span class="path1"></span>
-                                      <span class="path2"></span>
-                                      <span class="path3"></span>
-                                    </i>
-                                    System Information
-                                  </h6>
-                                </div>
-                                <div class="card-body">
-                                  <div class="row g-3">
-                                    <div class="col-12">
-                                      <label class="text-muted fs-7 fw-semibold">Team Member ID</label>
-                                      <div class="text-gray-600 fs-7 font-monospace">${member.id}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          `,
-                          confirmButtonText: 'Close',
-                          buttonsStyling: false,
-                          customClass: {
-                            confirmButton: 'btn btn-primary',
-                            popup: 'rounded',
-                            title: 'fs-4',
-                            htmlContainer: 'p-0'
-                          },
-                          width: 600,
-                        });
-                      }
-                    }}
-                  >
-                    View Profile
-                  </button>
                 </td>
               </tr>
             ))}

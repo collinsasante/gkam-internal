@@ -217,22 +217,34 @@ a:hover {
 .swal2-popup {
   border-radius: 8px !important;
   padding: 0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
 .swal2-title {
   font-size: 1.5rem !important;
   font-weight: 600 !important;
   color: var(--color-text) !important;
-  padding: 1.5rem 1.5rem 1rem !important;
+  padding: 1.5rem !important;
   margin: 0 !important;
   border-bottom: 1px solid var(--color-border) !important;
+  background-color: #ffffff !important;
 }
 
 .swal2-html-container {
   margin: 0 !important;
   padding: 0 !important;
-  max-height: 70vh !important;
+  max-height: 65vh !important;
   overflow-y: auto !important;
+  text-align: left !important;
+}
+
+.swal2-actions {
+  margin: 0 !important;
+  padding: 1rem 1.5rem !important;
+  border-top: 1px solid var(--color-border) !important;
+  background-color: #fafafa !important;
+  justify-content: flex-end !important;
+  gap: 0.75rem !important;
 }
 
 /* Modal action buttons styling */

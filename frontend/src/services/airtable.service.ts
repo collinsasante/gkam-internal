@@ -328,6 +328,11 @@ export const teamMemberService = {
   getAll: (options?: Parameters<typeof fetchRecords>[1]) =>
     fetchRecords<TeamMember>('Team Members', options),
   getById: (id: string) => getRecordById<TeamMember>('Team Members', id),
+  create: (fields: Record<string, unknown>) =>
+    createRecord<TeamMember>('Team Members', fields),
+  update: (id: string, fields: Record<string, unknown>) =>
+    updateRecord<TeamMember>('Team Members', id, fields),
+  delete: (id: string) => deleteRecord('Team Members', id),
 };
 
 // HR Employee Services (Employees table)
