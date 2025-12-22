@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react';
-import { designDraftsService } from '../../services/airtable.service';
-import type { DesignDraft } from '../../types/airtable.types';
-
-declare const Swal: any;
+import { designDraftsService, teamMemberService } from '../../services/airtable.service';
+import type { DesignDraft, TeamMember } from '../../types/airtable.types';
 
 type DesignStatus = 'Incomplete Information' | 'Unreachable' | 'Design' | 'Revision' | 'Production' | 'Final Handoff';
 
+declare const Swal: any;
+
 export default function DesignDraftsList() {
   const [designs, setDesigns] = useState<DesignDraft[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDesign, setSelectedDesign] = useState<DesignDraft | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadData();
+    loadTeamMembers();
   }, []);
+
+  const loadTeamMembers = async () => {
+    try {
+      const data = await teamMemberService.getAll();
+      setTeamMembers(data);
+    } catch (err) {
+      console.error('Failed to load team members:', err);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -30,483 +43,241 @@ export default function DesignDraftsList() {
     }
   };
 
-  const handleCardClick = async (design: DesignDraft) => {
-    if (typeof Swal === 'undefined') return;
+  const handleCardClick = (design: DesignDraft) => {
+    setSelectedDesign(design);
+  };
 
-    const revisionsLeft = design.fields['Revisions Left'] ?? 3;
-    const revisionsUsed = 3 - revisionsLeft;
+  const handleBackToList = () => {
+    setSelectedDesign(null);
+  };
+
+
+  const getTeamMemberName = (memberIds?: string[]): string => {
+    if (!memberIds || memberIds.length === 0) return 'N/A';
+    const member = teamMembers.find(tm => tm.id === memberIds[0]);
+    return member?.fields['Name'] || 'N/A';
+  };
+
+  const handleSendWhatsApp = async (phoneNumber?: string) => {
+    if (!phoneNumber || !selectedDesign) return;
+
+    const message = `Hello! 👋\n\nUpdate on your design project: ${selectedDesign.fields['Name']}\n\nOrder: ${selectedDesign.fields['Order Number'] || 'N/A'}\nStatus: ${selectedDesign.fields['Status'] || 'Design'}\nRevisions Left: ${selectedDesign.fields['Revisions Left'] ?? 3}\n\nTrack your order: https://track.packglamour.com/#ORD-${selectedDesign.fields['Order Number']}`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleDeleteDesign = async () => {
+    if (!selectedDesign) return;
 
     const result = await Swal.fire({
-      title: design.fields['Name'] || 'Design Details',
-      html: `
-        <div class="text-start">
-          <p><strong>Project Type:</strong> ${design.fields['Project Type'] || 'N/A'}</p>
-          <p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(design.fields['Status'])}">${design.fields['Status'] || 'Design'}</span></p>
-          <p><strong>Customer:</strong> ${design.fields['Customer Name'] || 'N/A'}</p>
-          <p><strong>Phone:</strong> ${design.fields['Phone Number'] || 'N/A'}</p>
-          <p><strong>Order Number:</strong> ${design.fields['Order Number'] || 'N/A'}</p>
-          <p><strong>Revisions:</strong> ${revisionsUsed}/3 used (${revisionsLeft} left)</p>
-          ${design.fields['Design Name'] ? `<p><strong>Design Name:</strong> ${design.fields['Design Name']}</p>` : ''}
-          ${design.fields['Created on'] ? `<p><strong>Created on:</strong> ${new Date(design.fields['Created on']).toLocaleDateString()}</p>` : ''}
-          ${design.fields['Latest Update'] ? `<p><strong>Latest Update:</strong> ${new Date(design.fields['Latest Update']).toLocaleString()}</p>` : ''}
-        </div>
-      `,
+      title: 'Delete Design?',
+      text: `Are you sure you want to delete "${selectedDesign.fields['Name'] || 'this design'}"? This action cannot be undone.`,
+      icon: 'warning',
       showCancelButton: true,
-      showDenyButton: true,
-      confirmButtonText: '<i class="ki-duotone ki-eye fs-2"></i> View Details',
-      denyButtonText: '<i class="ki-duotone ki-pencil fs-2"></i> Edit',
-      cancelButtonText: 'Close',
-      denyButtonColor: '#009ef7',
-      width: 600,
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: 'btn btn-danger me-2',
+        cancelButton: 'btn btn-light'
+      }
     });
 
     if (result.isConfirmed) {
-      handleViewDetails(design);
-    } else if (result.isDenied) {
-      handleEditDesign(design);
-    }
-  };
-
-  const handleViewDetails = (design: DesignDraft) => {
-    if (typeof Swal === 'undefined') return;
-
-    const revisionsLeft = design.fields['Revisions Left'] ?? 3;
-    const revisionsUsed = 3 - revisionsLeft;
-
-    const revisions: string[] = [];
-    const feedback: string[] = [];
-
-    // Collect revisions
-    for (let i = 1; i <= 3; i++) {
-      const revField = `Revision ${i}` as keyof DesignDraft['fields'];
-      const notesField = `Revision ${i} Notes` as keyof DesignDraft['fields'];
-
-      if (design.fields[revField]) {
-        const notes = design.fields[notesField] as string;
-        revisions.push(`
-          <div class="mb-3 p-4 border border-dashed border-primary rounded bg-light-primary">
-            <div class="d-flex align-items-center mb-2">
-              <i class="ki-duotone ki-abstract-26 fs-2 text-primary me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              <strong class="text-primary">Revision ${i}</strong>
-            </div>
-            ${notes ? `<p class="mb-0 text-gray-700">${notes}</p>` : '<p class="text-muted mb-0">No notes provided</p>'}
-          </div>
-        `);
-      }
-    }
-
-    // Collect feedback
-    for (let i = 1; i <= 4; i++) {
-      const feedbackField = `Feedback Rev ${i}` as keyof DesignDraft['fields'];
-      const commentsField = `Total Comments Rev ${i}` as keyof DesignDraft['fields'];
-
-      if (design.fields[feedbackField]) {
-        const feedbackText = design.fields[feedbackField] as string;
-        const comments = design.fields[commentsField] as number;
-
-        feedback.push(`
-          <div class="mb-3 p-4 border border-dashed border-info rounded bg-light-info">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="d-flex align-items-center">
-                <i class="ki-duotone ki-message-text fs-2 text-info me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                <strong class="text-info">Revision ${i} Feedback</strong>
-              </div>
-              <span class="badge badge-info">${comments || 0} comments</span>
-            </div>
-            <p class="mb-0 text-gray-700">${feedbackText}</p>
-          </div>
-        `);
-      }
-    }
-
-    const filesHtml = design.fields['Files Uploaded'] && design.fields['Files Uploaded'].length > 0
-      ? design.fields['Files Uploaded'].map(file => `
-          <div class="d-flex align-items-center p-3 mb-2 bg-light rounded">
-            <i class="ki-duotone ki-file fs-2x text-primary me-3">
-              <span class="path1"></span>
-              <span class="path2"></span>
-            </i>
-            <div class="flex-grow-1">
-              <a href="${file.url}" target="_blank" class="text-gray-800 text-hover-primary fw-bold fs-6">
-                ${file.filename}
-              </a>
-              <div class="text-muted fs-7">${(file.size / 1024).toFixed(2)} KB</div>
-            </div>
-            <a href="${file.url}" target="_blank" class="btn btn-sm btn-icon btn-light-primary">
-              <i class="ki-duotone ki-arrow-down fs-3"></i>
-            </a>
-          </div>
-        `).join('')
-      : '<div class="text-center py-5 text-muted">No files uploaded</div>';
-
-    Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-colors-square fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-          <span class="path3"></span>
-          <span class="path4"></span>
-        </i>
-        <span>${design.fields['Name'] || 'Design Details'}</span>
-      </div>`,
-      html: `
-        <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-          <!-- Project Information -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-primary">
-              <h6 class="card-title mb-0 text-primary">
-                <i class="ki-duotone ki-abstract-26 fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Project Information
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Project Type</label>
-                  <div class="text-gray-800 fw-bold">${design.fields['Project Type'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Status</label>
-                  <div>
-                    <span class="badge ${getStatusBadgeClass(design.fields['Status'])} fs-7">
-                      ${design.fields['Status'] || 'Design'}
-                    </span>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Customer Name</label>
-                  <div class="text-gray-800">${design.fields['Customer Name'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Phone Number</label>
-                  <div class="text-gray-800">${design.fields['Phone Number'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Order Number</label>
-                  <div class="text-gray-800">${design.fields['Order Number'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Revisions</label>
-                  <div class="text-gray-800">
-                    <span class="badge badge-light-warning">${revisionsUsed}/3 used</span>
-                    <span class="text-muted ms-2">(${revisionsLeft} left)</span>
-                  </div>
-                </div>
-                ${design.fields['Design Name'] ? `
-                  <div class="col-12">
-                    <label class="text-muted fs-7 fw-semibold">Design Name</label>
-                    <div class="text-gray-800">${design.fields['Design Name']}</div>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-
-          <!-- Product Details -->
-          ${design.fields['Ingredients'] || design.fields['Weight/Volume'] || design.fields['Color'] ? `
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-info">
-                <h6 class="card-title mb-0 text-info">
-                  <i class="ki-duotone ki-abstract-41 fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  Product Details
-                </h6>
-              </div>
-              <div class="card-body">
-                ${design.fields['Ingredients'] ? `
-                  <div class="mb-3">
-                    <label class="text-muted fs-7 fw-semibold">Ingredients</label>
-                    <div class="text-gray-800">${design.fields['Ingredients']}</div>
-                  </div>
-                ` : ''}
-                ${design.fields['Weight/Volume'] ? `
-                  <div class="mb-3">
-                    <label class="text-muted fs-7 fw-semibold">Weight/Volume</label>
-                    <div class="text-gray-800">${design.fields['Weight/Volume']}</div>
-                  </div>
-                ` : ''}
-                ${design.fields['Color'] ? `
-                  <div>
-                    <label class="text-muted fs-7 fw-semibold">Color</label>
-                    <div class="text-gray-800">${design.fields['Color']}</div>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Revision History -->
-          ${revisions.length > 0 ? `
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-warning">
-                <h6 class="card-title mb-0 text-warning">
-                  <i class="ki-duotone ki-notepad fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                    <span class="path3"></span>
-                    <span class="path4"></span>
-                    <span class="path5"></span>
-                  </i>
-                  Revision History
-                </h6>
-              </div>
-              <div class="card-body">
-                ${revisions.join('')}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Client Feedback -->
-          ${feedback.length > 0 ? `
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-success">
-                <h6 class="card-title mb-0 text-success">
-                  <i class="ki-duotone ki-messages fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                    <span class="path3"></span>
-                    <span class="path4"></span>
-                    <span class="path5"></span>
-                  </i>
-                  Client Feedback
-                </h6>
-              </div>
-              <div class="card-body">
-                ${feedback.join('')}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Files -->
-          ${design.fields['Files Uploaded'] && design.fields['Files Uploaded'].length > 0 ? `
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light-dark">
-                <h6 class="card-title mb-0 text-dark">
-                  <i class="ki-duotone ki-folder fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  Uploaded Files
-                </h6>
-              </div>
-              <div class="card-body">
-                ${filesHtml}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Timestamps -->
-          ${design.fields['Created on'] || design.fields['Latest Update'] ? `
-            <div class="card shadow-sm mb-4">
-              <div class="card-header bg-light">
-                <h6 class="card-title mb-0 text-gray-800">
-                  <i class="ki-duotone ki-time fs-3 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  Timeline
-                </h6>
-              </div>
-              <div class="card-body">
-                <div class="row g-3">
-                  ${design.fields['Created on'] ? `
-                    <div class="col-6">
-                      <label class="text-muted fs-7 fw-semibold">Created On</label>
-                      <div class="text-gray-800">${new Date(design.fields['Created on']).toLocaleDateString()}</div>
-                    </div>
-                  ` : ''}
-                  ${design.fields['Latest Update'] ? `
-                    <div class="col-6">
-                      <label class="text-muted fs-7 fw-semibold">Latest Update</label>
-                      <div class="text-gray-800">${new Date(design.fields['Latest Update']).toLocaleString()}</div>
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      `,
-      width: 900,
-      showCloseButton: true,
-      confirmButtonText: 'Close',
-      customClass: {
-        container: 'swal-custom-container',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      }
-    });
-  };
-
-  const handleEditDesign = async (design: DesignDraft) => {
-    if (typeof Swal === 'undefined') return;
-
-    const { value: formValues } = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-pencil fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-        </i>
-        <span>Edit Design Draft</span>
-      </div>`,
-      html: `
-        <div class="text-start p-4">
-          <div class="mb-5">
-            <label class="form-label required fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-status fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-                <span class="path4"></span>
-              </i>
-              Design Status
-            </label>
-            <select id="status" class="form-select form-select-solid">
-              <option value="Incomplete Information" ${design.fields['Status'] === 'Incomplete Information' ? 'selected' : ''}>⚠️ Incomplete Information</option>
-              <option value="Unreachable" ${design.fields['Status'] === 'Unreachable' ? 'selected' : ''}>❌ Unreachable</option>
-              <option value="Design" ${design.fields['Status'] === 'Design' ? 'selected' : ''}>🎨 Design</option>
-              <option value="Revision" ${design.fields['Status'] === 'Revision' ? 'selected' : ''}>✏️ Revision</option>
-              <option value="Production" ${design.fields['Status'] === 'Production' ? 'selected' : ''}>⚙️ Production</option>
-              <option value="Final Handoff" ${design.fields['Status'] === 'Final Handoff' ? 'selected' : ''}>✅ Final Handoff</option>
-            </select>
-            <div class="form-text">Update the current stage of the design project</div>
-          </div>
-
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-design fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Design Name
-            </label>
-            <input
-              id="designName"
-              type="text"
-              class="form-control form-control-solid"
-              value="${design.fields['Design Name'] || ''}"
-              placeholder="Enter design name"
-            >
-          </div>
-
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-profile-circle fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-              </i>
-              Customer Name
-            </label>
-            <input
-              id="customerName"
-              type="text"
-              class="form-control form-control-solid"
-              value="${design.fields['Customer Name'] || ''}"
-              placeholder="Enter customer name"
-            >
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-phone fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Phone Number
-            </label>
-            <input
-              id="phoneNumber"
-              type="tel"
-              class="form-control form-control-solid"
-              value="${design.fields['Phone Number'] || ''}"
-              placeholder="+234 XXX XXX XXXX"
-            >
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: '<i class="ki-duotone ki-check fs-2"></i> Save Changes',
-      cancelButtonText: '<i class="ki-duotone ki-cross fs-2"></i> Cancel',
-      width: 600,
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: 'btn btn-primary',
-        cancelButton: 'btn btn-light me-3',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      },
-      preConfirm: () => {
-        const status = (document.getElementById('status') as HTMLSelectElement).value;
-        const designName = (document.getElementById('designName') as HTMLInputElement).value;
-        const customerName = (document.getElementById('customerName') as HTMLInputElement).value;
-        const phoneNumber = (document.getElementById('phoneNumber') as HTMLInputElement).value;
-
-        if (!status) {
-          Swal.showValidationMessage('Please select a status');
-          return false;
-        }
-
-        return { status, designName, customerName, phoneNumber };
-      },
-    });
-
-    if (formValues) {
       try {
-        const updateData: any = {
-          'Status': formValues.status,
-        };
-
-        if (formValues.designName) {
-          updateData['Design Name'] = formValues.designName;
-        }
-        if (formValues.customerName) {
-          updateData['Customer Name'] = formValues.customerName;
-        }
-        if (formValues.phoneNumber) {
-          updateData['Phone Number'] = formValues.phoneNumber;
-        }
-
-        await designDraftsService.update(design.id, updateData);
+        await designDraftsService.delete(selectedDesign.id);
         await Swal.fire({
           icon: 'success',
-          title: 'Updated!',
-          text: 'Design has been updated successfully.',
+          title: 'Deleted!',
+          text: 'The design has been deleted successfully.',
           confirmButtonText: 'OK',
           buttonsStyling: false,
           customClass: {
             confirmButton: 'btn btn-success'
           }
         });
+        setSelectedDesign(null);
         loadData();
-      } catch (error) {
-        Swal.fire({
+      } catch (err) {
+        await Swal.fire({
           icon: 'error',
-          title: 'Error',
-          text: 'Failed to update design. Please try again.',
+          title: 'Delete Failed',
+          text: 'Failed to delete the design. Please try again.',
           confirmButtonText: 'OK',
           buttonsStyling: false,
           customClass: {
             confirmButton: 'btn btn-danger'
           }
         });
-        console.error(error);
       }
     }
+  };
+
+  const handleFilePreview = (file: any) => {
+    if (!file) return;
+
+    const isImage = file.type?.startsWith('image/') ||
+                    file.filename?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+
+    if (isImage) {
+      Swal.fire({
+        title: file.filename,
+        imageUrl: file.url,
+        imageAlt: file.filename,
+        showCloseButton: true,
+        confirmButtonText: 'Download',
+        showCancelButton: true,
+        cancelButtonText: 'Close',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-primary me-2',
+          cancelButton: 'btn btn-light'
+        },
+        width: '80%'
+      }).then((result: any) => {
+        if (result.isConfirmed) {
+          window.open(file.url, '_blank');
+        }
+      });
+    } else {
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const formatTextWithLineBreaks = (text?: string): string => {
+    if (!text) return 'N/A';
+    return text
+      .replace(/Uses:/g, '<br/><strong>Uses:</strong>')
+      .replace(/Phone:/g, '<br/><strong>Phone:</strong>')
+      .replace(/Best Before:/g, '<br/><strong>Best Before:</strong>')
+      .replace(/Not recommended/g, '<br/><strong>Not recommended</strong>')
+      .replace(/"A unique"/g, '')
+      // Format numbered lists (1., 2., 3., etc.)
+      .replace(/(\d+)\.\s+([A-Z])/g, '<br/><strong>$1.</strong> $2')
+      .replace(/Modifications/g, '<br/><strong>Modifications</strong><br/>')
+      .replace(/Ingredients:/g, '<br/><strong>Ingredients:</strong>')
+      .trim();
+  };
+
+  const handleFileUpload = async (fieldName: string, files: FileList | null) => {
+    if (!files || files.length === 0 || !selectedDesign) return;
+
+    setUploading(true);
+
+    try {
+      const fileArray = Array.from(files);
+      const formData = new FormData();
+
+      fileArray.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      // Note: Airtable API requires files to be uploaded as base64 or URLs
+      // For now, we'll show a notification that files would be uploaded
+      await Swal.fire({
+        icon: 'info',
+        title: 'File Upload',
+        text: `${fileArray.length} file(s) selected for ${fieldName}. In production, these would be uploaded to Airtable.`,
+        confirmButtonText: 'OK',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-primary'
+        }
+      });
+
+      // Here you would implement actual file upload to Airtable
+      // The Airtable API expects attachments as an array of objects with url property
+
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload Failed',
+        text: 'Failed to upload files. Please try again.',
+        confirmButtonText: 'OK',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-danger'
+        }
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const renderFilesWithUpload = (files: any, fieldName: string, label: string) => {
+    return (
+      <div>
+        {files && Array.isArray(files) && files.length > 0 ? (
+          <div className="mb-3">
+            {files.map((file, index) => {
+              const isImage = file.type?.startsWith('image/') ||
+                              file.filename?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+
+              return (
+                <div
+                  key={index}
+                  className="d-flex align-items-center justify-content-between p-3 mb-2 bg-light rounded cursor-pointer hover-bg-light-primary"
+                  onClick={() => handleFilePreview(file)}
+                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                >
+                  <div className="d-flex align-items-center flex-grow-1">
+                    {isImage ? (
+                      <div className="me-3">
+                        <img
+                          src={file.url}
+                          alt={file.filename}
+                          style={{
+                            width: '50px',
+                            height: '50px',
+                            objectFit: 'cover',
+                            borderRadius: '4px',
+                            border: '1px solid #e4e6ef'
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <i className="ki-duotone ki-file fs-2x text-primary me-3">
+                        <span className="path1"></span>
+                        <span className="path2"></span>
+                      </i>
+                    )}
+                    <div>
+                      <div className="text-gray-800 text-hover-primary fw-bold fs-7">{file.filename}</div>
+                      <span className="text-muted fs-8">({(file.size / 1024).toFixed(2)} KB)</span>
+                    </div>
+                  </div>
+                  <i className="ki-duotone ki-eye fs-2 text-primary">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                  </i>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-muted mb-3">No files uploaded</div>
+        )}
+
+        <label className="btn btn-sm btn-light-primary">
+          <i className="ki-duotone ki-file-up fs-3 me-2">
+            <span className="path1"></span>
+            <span className="path2"></span>
+          </i>
+          {uploading ? 'Uploading...' : `Upload ${label}`}
+          <input
+            type="file"
+            multiple
+            className="d-none"
+            onChange={(e) => handleFileUpload(fieldName, e.target.files)}
+            disabled={uploading}
+          />
+        </label>
+      </div>
+    );
   };
 
   const getStatusBadgeClass = (status?: string) => {
@@ -602,6 +373,367 @@ export default function DesignDraftsList() {
     );
   }
 
+  // Detail view when a design is selected
+  if (selectedDesign) {
+    // Calculate revisions used based on which revision fields have content
+    const hasRev1 = selectedDesign.fields['Revision 1'] && Array.isArray(selectedDesign.fields['Revision 1']) && selectedDesign.fields['Revision 1'].length > 0;
+    const hasRev2 = selectedDesign.fields['Revision 2'] && Array.isArray(selectedDesign.fields['Revision 2']) && selectedDesign.fields['Revision 2'].length > 0;
+    const hasRev3 = selectedDesign.fields['Revision 3'] && Array.isArray(selectedDesign.fields['Revision 3']) && selectedDesign.fields['Revision 3'].length > 0;
+
+    const revisionsUsed = (hasRev1 ? 1 : 0) + (hasRev2 ? 1 : 0) + (hasRev3 ? 1 : 0);
+    const totalRevisions = 3;
+    const revisionsLeft = totalRevisions - revisionsUsed;
+
+    return (
+      <div className="card">
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <button className="btn btn-sm btn-light-primary" onClick={handleBackToList}>
+              <i className="ki-duotone ki-arrow-left fs-3">
+                <span className="path1"></span>
+                <span className="path2"></span>
+              </i>
+              Back to List
+            </button>
+          </div>
+          <div className="card-toolbar d-flex flex-column align-items-end">
+            <button className="btn btn-sm btn-danger mb-2" onClick={handleDeleteDesign}>
+              <i className="ki-duotone ki-trash fs-3">
+                <span className="path1"></span>
+                <span className="path2"></span>
+                <span className="path3"></span>
+                <span className="path4"></span>
+                <span className="path5"></span>
+              </i>
+              Delete Design
+            </button>
+            <h2 className="fw-bold">{selectedDesign.fields['Name'] || 'Design Details'}</h2>
+          </div>
+        </div>
+
+        <div className="card-body p-5">
+
+          {/* Order Link */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Order Link</h3>
+            <div className="fs-6">
+              {selectedDesign.fields['Order Number'] ? (
+                <a href={`https://track.packglamour.com/#ORD-${selectedDesign.fields['Order Number']}`} target="_blank" rel="noopener noreferrer" className="text-primary">
+                  https://track.packglamour.com/#ORD-{selectedDesign.fields['Order Number']}
+                </a>
+              ) : (
+                selectedDesign.fields['Order Link'] ? (
+                  <a href={selectedDesign.fields['Order Link']} target="_blank" rel="noopener noreferrer" className="text-primary">
+                    {selectedDesign.fields['Order Link']}
+                  </a>
+                ) : 'N/A'
+              )}
+            </div>
+          </div>
+
+          {/* Total Available Revisions */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Total Available Revisions</h3>
+            <div className="row g-4">
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Revisions Left</div>
+                  <div className="fw-bold fs-5">{revisionsLeft}</div>
+                  <div className="text-muted fs-8 mt-1">Format: Number</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Details */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Order Details</h3>
+            <div className="row g-4">
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Project Type</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Project Type'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Order Information</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Order Number'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Customer Name</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Customer Name'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Phone Number</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Phone Number'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Status</div>
+                  <div><span className={`badge ${getStatusBadgeClass(selectedDesign.fields['Status'])}`}>{selectedDesign.fields['Status'] || 'Design'}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary Project Information */}
+          <div className="mb-8">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h3 className="fw-bold mb-0">Summary Project Information</h3>
+              {selectedDesign.fields['Phone Number'] && (
+                <button
+                  className="btn btn-sm btn-success ms-2"
+                  onClick={() => handleSendWhatsApp(selectedDesign.fields['Phone Number'])}
+                  title="Send WhatsApp Alert"
+                >
+                  <i className="ki-duotone ki-whatsapp fs-3 me-1">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                  </i>
+                  Send whatsapp alert
+                </button>
+              )}
+            </div>
+            <div className="row g-4">
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Product Name</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Name'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Preferred Colors</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Color'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Product Weight/Volume</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Weight/Volume'] || 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Ingredients</div>
+                  <div className="fw-bold fs-6" dangerouslySetInnerHTML={{ __html: formatTextWithLineBreaks(selectedDesign.fields['Ingredients']) }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Files Uploaded */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Customer Files Uploaded</h3>
+            <div className="bg-light p-4 rounded">
+              {renderFilesWithUpload(selectedDesign.fields['Files Uploaded'], 'Files Uploaded', 'Files')}
+            </div>
+          </div>
+
+          {/* Initial Design Drafts */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Initial Design Drafts</h3>
+            <div className="row g-4">
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-2">Designs</div>
+                  {renderFilesWithUpload(selectedDesign.fields['Design Draft 1'], 'Design Draft 1', 'Design Files')}
+                </div>
+              </div>
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Project File Link</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Project File Link'] || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Feedback - Rev 1.1 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Customer Feedback - Rev 1.1</h3>
+            <div className="row g-4">
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-2">Customer Revisions</div>
+                  {renderFilesWithUpload(selectedDesign.fields['Annotated Design Rev 1'], 'Annotated Design Rev 1', 'Annotated Files')}
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Total Comments</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Total Comments Rev 1'] || 'N/A'}</div>
+                  <div className="text-muted fs-8 mt-1">Format: Integer</div>
+                </div>
+              </div>
+              <div className="col-md-8">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Feedback Created On</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Created Rev 1'] ? new Date(selectedDesign.fields['Feedback Created Rev 1']).toLocaleDateString() : 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Revision Details</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Rev 1'] || selectedDesign.fields['Revision 1 Notes'] || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Design Draft v 1.1 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Design Draft v 1.1</h3>
+            <div className="bg-light p-4 rounded">
+              <div className="text-muted fs-7 mb-2">Design</div>
+              {renderFilesWithUpload(selectedDesign.fields['Revision 1'], 'Revision 1', 'Design Files')}
+            </div>
+          </div>
+
+          {/* Customer Feedback v1.2 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Customer Feedback v1.2</h3>
+            <div className="row g-4">
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-2">Customer Revisions</div>
+                  {renderFilesWithUpload(selectedDesign.fields['Annotated Design Rev 2'], 'Annotated Design Rev 2', 'Annotated Files')}
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Total Comments</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Total Comments Rev 2'] || 'N/A'}</div>
+                  <div className="text-muted fs-8 mt-1">Format: Integer</div>
+                </div>
+              </div>
+              <div className="col-md-8">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Feedback Created On</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Created Rev 2'] ? new Date(selectedDesign.fields['Feedback Created Rev 2']).toLocaleDateString() : 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Revision Details</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Rev 2'] || selectedDesign.fields['Revision 2 Notes'] || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Design Draft v 1.2 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Design Draft v 1.2</h3>
+            <div className="bg-light p-4 rounded">
+              <div className="text-muted fs-7 mb-2">Design</div>
+              {renderFilesWithUpload(selectedDesign.fields['Revision 2'], 'Revision 2', 'Design Files')}
+            </div>
+          </div>
+
+          {/* Revision v1.3 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Revision v1.3</h3>
+            <div className="row g-4">
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-2">Customer Revisions</div>
+                  {renderFilesWithUpload(selectedDesign.fields['Annotated Design Rev 3'], 'Annotated Design Rev 3', 'Annotated Files')}
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Total Comments</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Total Comments Rev 3'] || 'N/A'}</div>
+                  <div className="text-muted fs-8 mt-1">Format: Integer</div>
+                </div>
+              </div>
+              <div className="col-md-8">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Feedback Created On</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Created Rev 3'] ? new Date(selectedDesign.fields['Feedback Created Rev 3']).toLocaleDateString() : 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Revision Details</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Rev 3'] || selectedDesign.fields['Revision 3 Notes'] || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Final Design Draft v1.3 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Final Design Draft v1.3</h3>
+            <div className="bg-light p-4 rounded">
+              <div className="text-muted fs-7 mb-2">Design</div>
+              {renderFilesWithUpload(selectedDesign.fields['Revision 3'], 'Revision 3', 'Design Files')}
+            </div>
+          </div>
+
+          {/* Revision 1.4 */}
+          <div className="mb-8">
+            <h3 className="fw-bold mb-4">Revision 1.4</h3>
+            <div className="row g-4">
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-2">Customer Revisions</div>
+                  {renderFilesWithUpload(selectedDesign.fields['Annotated Design Rev 4'], 'Annotated Design Rev 4', 'Annotated Files')}
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Total Comments</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Total Comments Rev 4'] || 'N/A'}</div>
+                  <div className="text-muted fs-8 mt-1">Format: Integer</div>
+                </div>
+              </div>
+              <div className="col-md-8">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Feedback Created On</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Created Rev 4'] ? new Date(selectedDesign.fields['Feedback Created Rev 4']).toLocaleDateString() : 'N/A'}</div>
+                </div>
+              </div>
+              <div className="col-md-12">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Revision Details</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Feedback Rev 4'] || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Project Update Info */}
+          <div className="mb-8">
+            <div className="row g-4">
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Project Updated by</div>
+                  <div className="fw-bold fs-6">{getTeamMemberName(selectedDesign.fields['Created by'])}</div>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="bg-light p-4 rounded">
+                  <div className="text-muted fs-7 mb-1">Last Update Sent On</div>
+                  <div className="fw-bold fs-6">{selectedDesign.fields['Latest Update'] ? new Date(selectedDesign.fields['Latest Update']).toLocaleString() : 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // Kanban board view
   return (
     <div className="card">
       <div className="card-header border-0 pt-6">
@@ -662,7 +794,12 @@ export default function DesignDraftsList() {
 
                 <div className="d-flex flex-column gap-3">
                   {columnDesigns.map((design) => {
-                    const revisionsLeft = design.fields['Revisions Left'] ?? 3;
+                    // Calculate actual revisions left
+                    const hasRev1 = design.fields['Revision 1'] && Array.isArray(design.fields['Revision 1']) && design.fields['Revision 1'].length > 0;
+                    const hasRev2 = design.fields['Revision 2'] && Array.isArray(design.fields['Revision 2']) && design.fields['Revision 2'].length > 0;
+                    const hasRev3 = design.fields['Revision 3'] && Array.isArray(design.fields['Revision 3']) && design.fields['Revision 3'].length > 0;
+                    const revisionsUsed = (hasRev1 ? 1 : 0) + (hasRev2 ? 1 : 0) + (hasRev3 ? 1 : 0);
+                    const revisionsLeft = 3 - revisionsUsed;
 
                     return (
                       <div
@@ -672,7 +809,6 @@ export default function DesignDraftsList() {
                         style={{ transition: 'all 0.2s ease' }}
                       >
                         <div className="card-body p-5">
-                          {/* Project Name */}
                           <div className="mb-3">
                             <h4 className="fs-6 fw-bold text-gray-800 mb-1">
                               {design.fields['Name'] || 'Untitled Design'}
@@ -682,7 +818,6 @@ export default function DesignDraftsList() {
                             )}
                           </div>
 
-                          {/* Project Type */}
                           <div className="mb-3">
                             <div className="d-flex align-items-center">
                               <i className={`ki-duotone ${getProjectTypeIcon(design.fields['Project Type'])} fs-4 text-gray-500 me-2`}>
@@ -695,7 +830,6 @@ export default function DesignDraftsList() {
                             </div>
                           </div>
 
-                          {/* Customer Name */}
                           {design.fields['Customer Name'] && (
                             <div className="mb-3">
                               <div className="d-flex align-items-center">
@@ -710,7 +844,6 @@ export default function DesignDraftsList() {
                             </div>
                           )}
 
-                          {/* Order Number */}
                           {design.fields['Order Number'] && (
                             <div className="mb-3">
                               <div className="d-flex align-items-center">
@@ -731,7 +864,6 @@ export default function DesignDraftsList() {
                             </div>
                           )}
 
-                          {/* Revisions */}
                           <div className="separator separator-dashed my-3"></div>
 
                           <div className="d-flex justify-content-between align-items-center">

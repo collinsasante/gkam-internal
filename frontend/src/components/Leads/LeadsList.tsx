@@ -467,17 +467,17 @@ export default function LeadsList() {
   const getColumnColor = (status: LeadStatus) => {
     switch (status) {
       case 'New Lead':
-        return '#dc3545';      // Red
+        return '#009ef7';      // Blue
       case 'Attempted to Contact':
-        return '#000000';      // Black
+        return '#ffc700';      // Yellow
       case 'Contacted':
-        return '#dc3545';      // Red
+        return '#7239ea';      // Purple
       case 'Qualified':
-        return '#000000';      // Black
+        return '#50cd89';      // Green
       case 'Unqualified':
-        return '#dc3545';      // Red
+        return '#f1416c';      // Red
       default:
-        return '#dee2e6';      // Light gray
+        return '#e4e6ef';      // Light gray
     }
   };
 
@@ -532,27 +532,27 @@ export default function LeadsList() {
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="card mb-5">
-        <div className="card-header border-0 pt-6">
-          <div className="card-title">
-            <div className="d-flex align-items-center position-relative my-1">
-              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-                <span className="path1"></span>
-                <span className="path2"></span>
-              </i>
-              <input
-                type="text"
-                className="form-control form-control-solid w-250px ps-13"
-                placeholder="Search leads..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+    <div className="card">
+      <div className="card-header border-0 pt-6">
+        <div className="card-title">
+          <div className="d-flex align-items-center position-relative my-1">
+            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            <input
+              type="text"
+              className="form-control form-control-solid w-300px ps-13"
+              placeholder="Search leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <div className="card-toolbar">
-            <button className="btn btn-light" onClick={loadData}>
+        </div>
+
+        <div className="card-toolbar">
+          <div className="d-flex justify-content-end align-items-center gap-3">
+            <button className="btn btn-sm btn-light" onClick={loadData}>
               <i className="ki-duotone ki-arrows-circle fs-2">
                 <span className="path1"></span>
                 <span className="path2"></span>
@@ -563,24 +563,28 @@ export default function LeadsList() {
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="d-flex gap-5" style={{ overflowX: 'auto', minHeight: '600px' }}>
+      <div className="card-body py-4">
+        <div className="d-flex gap-5 overflow-auto pb-5" style={{ minHeight: '600px' }}>
         {columns.map((column) => {
           const columnLeads = getLeadsByStatus(column.status);
           return (
-            <div
-              key={column.status}
-              className="flex-shrink-0"
-              style={{ width: '320px' }}
-            >
-              {/* Column Header */}
-              <div className="card mb-3" style={{ borderTop: `3px solid ${getColumnColor(column.status)}` }}>
-                <div className="card-body p-4">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <h3 className="fs-5 fw-bold text-gray-800 mb-0">{column.title}</h3>
-                    <span className="badge badge-light-primary">{columnLeads.length}</span>
+            <div key={column.status} className="flex-shrink-0" style={{ width: '320px' }}>
+              <div className="mb-4">
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center">
+                    <div
+                      className="rounded-circle me-2"
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: getColumnColor(column.status),
+                      }}
+                    ></div>
+                    <h3 className="fs-5 fw-bold mb-0">{column.title}</h3>
                   </div>
+                  <span className="badge badge-light-primary">{columnLeads.length}</span>
                 </div>
+                <div className="separator separator-dashed mb-4"></div>
               </div>
 
               {/* Column Cards */}
@@ -588,9 +592,9 @@ export default function LeadsList() {
                 {columnLeads.map((lead) => (
                   <div
                     key={lead.id}
-                    className="card card-flush shadow-sm hover-elevate-up"
-                    style={{ cursor: 'pointer' }}
+                    className="card card-flush cursor-pointer hover-elevate-up"
                     onClick={() => handleCardClick(lead)}
+                    style={{ transition: 'all 0.2s ease' }}
                   >
                     <div className="card-body p-5">
                       {/* Contact Name */}
@@ -725,16 +729,21 @@ export default function LeadsList() {
 
                 {/* Empty State */}
                 {columnLeads.length === 0 && (
-                  <div className="card card-flush">
-                    <div className="card-body p-5 text-center">
-                      <span className="text-muted fs-7">No leads</span>
-                    </div>
+                  <div className="text-center py-10 text-muted">
+                    No leads in this stage
                   </div>
                 )}
               </div>
             </div>
           );
         })}
+        </div>
+
+        <div className="d-flex justify-content-between align-items-center mt-5">
+          <div className="text-gray-600">
+            Total: {leads.length} lead{leads.length !== 1 ? 's' : ''}
+          </div>
+        </div>
       </div>
     </div>
   );
