@@ -125,7 +125,9 @@ export interface DiscoveryCallRecord {
   id: string;
   fields: {
     'Order ID': string;
+    'Order Number'?: string;
     'Discovery Call Name'?: string;
+    'Customer Name (from Customer Name)'?: string | string[];
     'Company Name'?: string;
     'Contact Email'?: string;
     'Contact Phone'?: string;
@@ -146,8 +148,8 @@ export interface DiscoveryCallRecord {
       size: number;
       type: string;
     }>;
-    'Discovery Call Summary (AI)'?: string;
-    'Action Items (AI)'?: string;
+    'Discovery Call Summary (AI)'?: string | {state: string; value: string; isStale: boolean};
+    'Action Items (AI)'?: string | {state: string; value: string; isStale: boolean};
   };
 }
 
@@ -363,25 +365,49 @@ export interface Deal {
 export interface CompletedLabelForm {
   id: string;
   fields: {
-    'Form ID': string;  // Primary
+    'Form ID'?: string;  // Primary (but may not exist)
+    'Order Number'?: string;  // Actual field being used
     'Customer Name'?: string;
     'Contact'?: string[];  // Links to Contact
+    'Phone Number'?: string;
+    'Phone 2'?: string;
     'Product Name'?: string;
-    'Label Type'?: 'Sticker Label' | 'Shrink Sleeve' | 'Wrap Around' | 'Front & Back' | 'Custom';
+    'Label Type'?: 'Sticker Label' | 'Shrink Sleeve' | 'Wrap Around' | 'Front & Back' | 'Custom' | 'Standard Design' | 'FDA Compliant Design' | 'Logo Design';
+    'Label Dimensions'?: string;
     'Dimensions'?: string;
     'Quantity'?: number;
     'Material'?: string;
     'Finish'?: 'Glossy' | 'Matte' | 'Textured';
+    'Color'?: string;
     'Colors'?: string;
     'Barcode Required'?: boolean;
     'Barcode Type'?: string;
     'Ingredients'?: string;
+    'Weight/Volume'?: string;
+    'Country of Origin'?: string;
+    'Manufacturer Details'?: string;
+    'Manufacturing Date'?: string;
+    'Expiry Date'?: string;
+    'Batch Number'?: string;
+    'Directions for Use'?: string;
+    'Storage Instructions'?: string;
+    'Special Considerations'?: string;
     'Regulatory Info'?: string;
     'Artwork Status'?: 'Not Started' | 'In Progress' | 'Submitted' | 'Approved';
+    'Status'?: string[] | string;  // Multiple select field or string - checking if different from Artwork Status
+    'Overdue Status'?: string;
+    'Terms Accepted'?: string | boolean;
     'Submission Date'?: string;
     'Approval Date'?: string;
     'Design Drafts'?: string[];  // Links to Design Drafts
+    'Design Drafts 2'?: string[];
+    'Design Drafts 3'?: string[];
     'Discovery Call'?: string[];  // Links to Discovery Call Records
+    'Discovery Call Records'?: string[];
+    'Discovery Call Records 2'?: string[];
+    'Design Feedback'?: string[] | string;
+    'Design Feedback 2'?: string[] | string;
+    'Files Uploaded'?: string;
     'Files Attached'?: Array<{
       id: string;
       url: string;
@@ -389,9 +415,11 @@ export interface CompletedLabelForm {
       size: number;
       type: string;
     }>;
+    'Design Review'?: string;
     'Special Instructions'?: string;
     'Created by'?: string[];
     'Created on'?: string;
+    [key: string]: any;  // Index signature for dynamic field access
   };
 }
 

@@ -61,6 +61,18 @@ export default function TeamMembersList() {
     try {
       setLoading(true);
       const teamMembersData = await teamMemberService.getAll();
+
+      // Debug: Log team members data structure
+      if (teamMembersData.length > 0) {
+        console.log('=== TEAM MEMBERS DATA STRUCTURE ===');
+        console.log('First team member record:', teamMembersData[0]);
+        console.log('Name:', teamMembersData[0].fields['Name']);
+        console.log('Email:', teamMembersData[0].fields['Email']);
+        console.log('Role:', teamMembersData[0].fields['Role']);
+        console.log('All fields:', Object.keys(teamMembersData[0].fields));
+        console.log('Total team members loaded:', teamMembersData.length);
+      }
+
       setTeamMembers(teamMembersData);
       setError(null);
     } catch (err) {
@@ -97,6 +109,13 @@ export default function TeamMembersList() {
 
   const handleMemberClick = (member: TeamMember) => {
     if (typeof Swal !== 'undefined') {
+      // Debug: Log modal data
+      console.log('=== TEAM MEMBER MODAL ===');
+      console.log('Member clicked:', member);
+      console.log('Modal Label: Full Name | Value:', member.fields['Name'] || 'N/A');
+      console.log('Modal Label: Email Address | Value:', member.fields['Email'] || 'N/A');
+      console.log('Modal Label: Role | Value:', member.fields['Role'] || 'Team Member');
+
       Swal.fire({
         title: member.fields['Name'] || 'Team Member',
         html: `
@@ -224,6 +243,12 @@ export default function TeamMembersList() {
           const email = (document.getElementById('member-email') as HTMLInputElement)?.value;
           const role = (document.getElementById('member-role') as HTMLInputElement)?.value;
 
+          // Debug: Log form submission values
+          console.log('=== ADD TEAM MEMBER FORM ===');
+          console.log('Form Field: Full Name | Value:', name);
+          console.log('Form Field: Email Address | Value:', email);
+          console.log('Form Field: Role | Value:', role || 'Team Member');
+
           if (!name || !email) {
             Swal.showValidationMessage('Please fill in all required fields');
             return false;
@@ -234,11 +259,17 @@ export default function TeamMembersList() {
       }).then(async (result: any) => {
         if (result.isConfirmed) {
           try {
-            await teamMemberService.create({
+            const createData = {
               'Name': result.value.name,
               'Email': result.value.email,
               'Role': result.value.role || 'Team Member',
-            });
+            };
+
+            // Debug: Log data being sent to Airtable
+            console.log('=== CREATING TEAM MEMBER ===');
+            console.log('Data being sent to Airtable:', createData);
+
+            await teamMemberService.create(createData);
 
             Swal.fire({
               title: 'Success!',
@@ -338,48 +369,59 @@ export default function TeamMembersList() {
             </tr>
           </thead>
           <tbody className="text-gray-600 fw-semibold">
-            {teamMembers.map((member) => (
-              <tr
-                key={member.id}
-                style={{ cursor: 'pointer' }}
-                onClick={() => handleMemberClick(member)}
-                className="hover-bg-light-primary"
-              >
-                <td>
-                  <div className="d-flex align-items-center">
-                    <div className="symbol symbol-circle symbol-50px overflow-hidden me-3">
-                      <div className="symbol-label" style={{ backgroundColor: getRandomColor(member.fields['Name']) }}>
-                        <span className="text-white fw-bold fs-4">
-                          {getInitials(member.fields['Name'])}
+            {teamMembers.map((member) => {
+              // Debug: Log table row data
+              console.log('=== RENDERING TABLE ROW ===');
+              console.log('Member ID:', member.id);
+              console.log('Table Column: Team Member (Name) | Value:', member.fields['Name'] || 'Unknown');
+              console.log('Table Column: Email | Value:', member.fields['Email'] || 'N/A');
+              console.log('Table Column: Role | Value:', member.fields['Role'] || 'Team Member');
+              console.log('Initials:', getInitials(member.fields['Name']));
+              console.log('Color:', getRandomColor(member.fields['Name']));
+
+              return (
+                <tr
+                  key={member.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleMemberClick(member)}
+                  className="hover-bg-light-primary"
+                >
+                  <td>
+                    <div className="d-flex align-items-center">
+                      <div className="symbol symbol-circle symbol-50px overflow-hidden me-3">
+                        <div className="symbol-label" style={{ backgroundColor: getRandomColor(member.fields['Name']) }}>
+                          <span className="text-white fw-bold fs-4">
+                            {getInitials(member.fields['Name'])}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column">
+                        <span className="text-gray-800 fw-bold fs-6">
+                          {member.fields['Name'] || 'Unknown'}
                         </span>
+                        {member.fields['Role'] && (
+                          <span className="text-muted fs-7">{member.fields['Role']}</span>
+                        )}
                       </div>
                     </div>
-                    <div className="d-flex flex-column">
-                      <span className="text-gray-800 fw-bold fs-6">
-                        {member.fields['Name'] || 'Unknown'}
-                      </span>
-                      {member.fields['Role'] && (
-                        <span className="text-muted fs-7">{member.fields['Role']}</span>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  {member.fields['Email'] ? (
-                    <a href={`mailto:${member.fields['Email']}`} className="text-gray-800">
-                      {member.fields['Email']}
-                    </a>
-                  ) : (
-                    <span className="text-muted">N/A</span>
-                  )}
-                </td>
-                <td>
-                  <span className="badge badge-primary">
-                    {member.fields['Role'] || 'Team Member'}
-                  </span>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td>
+                    {member.fields['Email'] ? (
+                      <a href={`mailto:${member.fields['Email']}`} className="text-gray-800">
+                        {member.fields['Email']}
+                      </a>
+                    ) : (
+                      <span className="text-muted">N/A</span>
+                    )}
+                  </td>
+                  <td>
+                    <span className="badge badge-primary">
+                      {member.fields['Role'] || 'Team Member'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
