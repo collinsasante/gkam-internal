@@ -7,6 +7,8 @@ type DesignStatus = 'Incomplete Information' | 'Unreachable' | 'Design' | 'Revis
 declare const Swal: any;
 
 export default function DesignDraftsList() {
+  console.log('✅ DesignDraftsList Component Version: LOCAL-LATEST-WITH-WHATSAPP-DELETE-REVISIONS');
+
   const [designs, setDesigns] = useState<DesignDraft[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);

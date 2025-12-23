@@ -27,6 +27,9 @@ import { authService } from './services/auth.service';
 import type { AuthUser } from './services/auth.service';
 
 function App() {
+  console.log('🚀 App Version: LOCAL-LATEST-2024-12-23-v2');
+  console.log('📍 Build Time:', new Date().toISOString());
+
   const location = useLocation();
   const [activeView, setActiveView] = useState('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);

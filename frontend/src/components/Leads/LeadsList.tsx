@@ -8,6 +8,8 @@ declare const Swal: any;
 type LeadStatus = 'New Lead' | 'Attempted to Contact' | 'Contacted' | 'Qualified' | 'Unqualified';
 
 export default function LeadsList() {
+  console.log('✅ LeadsList Component Version: LOCAL-LATEST-KANBAN-REDESIGN-MATCHING-DESIGN-DRAFTS');
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
