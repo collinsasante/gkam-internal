@@ -27,8 +27,18 @@ import { authService } from './services/auth.service';
 import type { AuthUser } from './services/auth.service';
 
 function App() {
-  console.log('🚀 App Version: LOCAL-LATEST-2024-12-23-v2');
+  console.log('🚀 App Version: LOCAL-LATEST-2026-01-01-v3-WITH-ASSETS-PLUGIN');
   console.log('📍 Build Time:', new Date().toISOString());
+
+  // Check which JS bundle is loaded
+  const scripts = Array.from(document.scripts).map(s => s.src).filter(s => s.includes('index-'));
+  console.log('📦 JS Bundle:', scripts);
+
+  // Check CSS files
+  console.log('🎨 CSS Check - style.bundle.css loaded:', !!document.querySelector('link[href*="style.bundle.css"]'));
+  console.log('🎨 CSS Check - plugins.bundle.css loaded:', !!document.querySelector('link[href*="plugins.bundle.css"]'));
+  console.log('🎨 CSS Check - custom-tweaks.css loaded:', !!document.querySelector('link[href*="custom-tweaks.css"]'));
+  console.log('📦 All stylesheets:', Array.from(document.styleSheets).map(s => s.href).filter(Boolean));
 
   const location = useLocation();
   const [activeView, setActiveView] = useState('dashboard');

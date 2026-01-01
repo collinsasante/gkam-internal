@@ -18,8 +18,14 @@ const copyAssetsPlugin = () => ({
 
     // Copy files using shell command
     try {
+      console.log('📁 Copying assets from:', srcAssets);
+      console.log('📁 Copying assets to:', distAssets);
       execSync(`cp -r "${srcAssets}" "${resolve(__dirname, 'dist/src/')}"`);
-      console.log('✅ Copied src/assets to dist/src/assets');
+      console.log('✅ Successfully copied src/assets to dist/src/assets');
+
+      // Verify CSS files were copied
+      const cssFiles = execSync(`find "${distAssets}/css" -name "*.css" 2>/dev/null || echo "none"`).toString().trim();
+      console.log('✅ CSS files in dist:', cssFiles.split('\n').filter(f => f && f !== 'none'));
     } catch (error) {
       console.error('❌ Failed to copy assets:', error);
     }
