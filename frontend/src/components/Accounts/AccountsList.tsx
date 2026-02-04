@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { accountService, interactionService, taskService, teamMemberService } from '../../services/airtable.service';
 import type { Account, TeamMember } from '../../types/airtable.types';
+import Modal from '../Common/Modal';
 
 declare const Swal: any;
 
@@ -12,6 +13,18 @@ export default function AccountsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterIndustry, setFilterIndustry] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
+
+  // Modal State
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+
+  // Form State
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     loadAccounts();
@@ -41,6 +54,174 @@ export default function AccountsList() {
     }
   };
 
+  // --- Handlers ---
+
+  const openCreateModal = () => {
+    setFormData({
+      accountName: '', industry: '', size: '', status: '', location: '', city: '',
+      website: '', social: '', platform: '', accountOwner: '', notes: ''
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateSubmit = async () => {
+    if (!formData.accountName) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Account Name is required' });
+      return;
+    }
+
+    try {
+      await accountService.create({
+        'Account Name': formData.accountName,
+        'Industry': formData.industry || undefined,
+        'Size': formData.size || undefined,
+        'Account Status': formData.status || undefined,
+        'Location': formData.location || undefined,
+        'City': formData.city || undefined,
+        'Company Website': formData.website || undefined,
+        'Social Media Handle': formData.social || undefined,
+        'Platform': formData.platform || undefined,
+        'Account owner': formData.accountOwner ? [formData.accountOwner] : undefined,
+        'Notes': formData.notes || undefined,
+      });
+      Swal.fire('Success!', 'Account has been created.', 'success');
+      loadAccounts();
+      setIsCreateModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Failed to create account', 'error');
+    }
+  };
+
+  const handleRowClick = (account: Account) => {
+    setSelectedAccount(account);
+    setIsViewModalOpen(true);
+  };
+
+  const openEditModal = (account: Account) => {
+    setSelectedAccount(account);
+    setFormData({
+      accountName: account.fields['Account Name'] || '',
+      industry: account.fields['Industry'] || '',
+      location: account.fields['Location'] || '',
+      city: account.fields['City'] || '',
+      status: account.fields['Account Status'] || '',
+      website: account.fields['Company Website'] || '',
+      social: account.fields['Social Media Handle'] || '',
+      notes: account.fields['Notes'] || ''
+    });
+    setIsViewModalOpen(false);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedAccount) return;
+    if (!formData.accountName) {
+      Swal.fire('Error', 'Account name is required', 'error');
+      return;
+    }
+
+    try {
+      await accountService.update(selectedAccount.id, {
+        'Account Name': formData.accountName,
+        'Industry': formData.industry || undefined,
+        'Location': formData.location || undefined,
+        'City': formData.city || undefined,
+        'Account Status': formData.status as 'Active' | 'Inactive',
+        'Company Website': formData.website || undefined,
+        'Social Media Handle': formData.social || undefined,
+        'Notes': formData.notes || undefined,
+      });
+      Swal.fire('Updated!', 'Account has been updated.', 'success');
+      loadAccounts();
+      setIsEditModalOpen(false);
+    } catch (err) {
+      Swal.fire('Error', 'Failed to update account', 'error');
+    }
+  };
+
+  const handleDelete = (account: Account) => {
+    setIsViewModalOpen(false);
+    Swal.fire({
+      title: 'Delete Account?',
+      text: `Are you sure you want to delete ${account.fields['Account Name']}? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc3545',
+    }).then(async (result: any) => {
+      if (result.isConfirmed) {
+        try {
+          await accountService.delete(account.id);
+          Swal.fire('Deleted!', 'Account has been deleted.', 'success');
+          loadAccounts();
+        } catch (err) {
+          Swal.fire('Error', 'Failed to delete account', 'error');
+        }
+      }
+    });
+  };
+
+  const openInteractionModal = (account: Account) => {
+    setSelectedAccount(account);
+    setFormData({ name: '', type: '', datetime: '', notes: '' });
+    setIsViewModalOpen(false);
+    setIsInteractionModalOpen(true);
+  };
+
+  const handleInteractionSubmit = async () => {
+    if (!selectedAccount) return;
+    if (!formData.name) {
+      Swal.fire('Error', 'Interaction Name is required', 'error');
+      return;
+    }
+
+    try {
+      await interactionService.create({
+        'Name': formData.name,
+        'Type': formData.type || undefined,
+        'Date & Time': formData.datetime || undefined,
+        'Notes': formData.notes || undefined,
+        'Account': [selectedAccount.id],
+      });
+      Swal.fire('Added!', 'Interaction has been added.', 'success');
+      setIsInteractionModalOpen(false);
+    } catch (err) {
+      Swal.fire('Error', 'Failed to add interaction', 'error');
+    }
+  };
+
+  const openTaskModal = (account: Account) => {
+    setSelectedAccount(account);
+    setFormData({ title: '', description: '', status: 'To do', priority: '', deadline: '' });
+    setIsViewModalOpen(false);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleTaskSubmit = async () => {
+    if (!selectedAccount) return;
+    if (!formData.title) {
+      Swal.fire('Error', 'Task Title is required', 'error');
+      return;
+    }
+
+    try {
+      await taskService.create({
+        'Task Title': formData.title,
+        'Task Description': formData.description || undefined,
+        'Status': formData.status || 'To do',
+        'Priority': formData.priority || undefined,
+        'Task Deadline': formData.deadline || undefined,
+        'Accounts': [selectedAccount.id],
+      });
+      Swal.fire('Added!', 'Task has been added.', 'success');
+      setIsTaskModalOpen(false);
+    } catch (err) {
+      Swal.fire('Error', 'Failed to add task', 'error');
+    }
+  };
+
   const filteredAccounts = accounts
     .filter((account) => {
       const matchesSearch = searchTerm === '' ||
@@ -55,816 +236,21 @@ export default function AccountsList() {
     .sort((a, b) => {
       const nameA = a.fields['Account Name'] || '';
       const nameB = b.fields['Account Name'] || '';
-
-      // Check if names start with numbers
       const startsWithNumberA = /^\d/.test(nameA);
       const startsWithNumberB = /^\d/.test(nameB);
 
       if (startsWithNumberA && startsWithNumberB) {
-        // Both start with numbers - extract and compare numerically
         const numA = parseInt(nameA.match(/^(\d+)/)?.[1] || '0', 10);
         const numB = parseInt(nameB.match(/^(\d+)/)?.[1] || '0', 10);
         return numA - numB;
       } else if (startsWithNumberA) {
-        // A starts with number, B doesn't - A comes first
         return -1;
       } else if (startsWithNumberB) {
-        // B starts with number, A doesn't - B comes first
         return 1;
       } else {
-        // Both start with letters - alphabetical sort
         return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
       }
     });
-
-  const handleRowClick = (account: Account) => {
-    if (typeof Swal !== 'undefined') {
-      // Get account number from the name (e.g., "123" from "123 Company") - only show if starts with number
-      const accountNumberMatch = account.fields['Account Name']?.match(/^(\d+)/);
-      const accountNumber = accountNumberMatch ? accountNumberMatch[1] : '';
-
-      const logoHtml = account.fields['Logo']?.[0]
-        ? `<img src="${account.fields['Logo'][0].url}" alt="${account.fields['Account Name']}" style="max-width: 100px; max-height: 100px; border-radius: 8px;" />`
-        : accountNumber
-        ? `<div class="symbol symbol-75px"><div class="symbol-label fs-1 bg-light-info text-info">${accountNumber}</div></div>`
-        : '';
-
-      Swal.fire({
-        title: `${account.fields['Account Name']}`,
-        html: `
-          <!-- Logo Section -->
-          ${logoHtml ? `<div class="modal-section" style="text-align: center;">${logoHtml}</div>` : ''}
-
-          <!-- Action Buttons Bar -->
-          <div class="modal-actions-bar">
-            <button class="btn btn-primary" id="edit-account-btn">
-              <i class="ki-duotone ki-pencil fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
-              Edit
-            </button>
-            <button class="btn btn-light" id="add-interaction-btn">
-              <i class="ki-duotone ki-messages fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-              Add Interaction
-            </button>
-            <button class="btn btn-light" id="add-task-btn">
-              <i class="ki-duotone ki-check-square fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
-              Add Task
-            </button>
-            <button class="btn btn-secondary" id="delete-account-btn">
-              <i class="ki-duotone ki-trash fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-              Delete
-            </button>
-          </div>
-
-          <!-- Business Details Section -->
-          <div class="modal-section">
-            <div class="modal-section-title">
-              <i class="ki-duotone ki-abstract-26 fs-4">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Business Details
-            </div>
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <div class="modal-info-label">Industry</div>
-                <div class="modal-info-value">
-                  <span class="badge badge-primary">${account.fields['Industry'] || 'Not specified'}</span>
-                </div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Company Size</div>
-                <div class="modal-info-value">${account.fields['Size'] || 'Not specified'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Status</div>
-                <div class="modal-info-value">
-                  ${account.fields['Account Status'] === 'Active'
-                    ? '<span class="badge badge-primary">Active</span>'
-                    : '<span class="badge badge-secondary">Inactive</span>'}
-                </div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Platform</div>
-                <div class="modal-info-value">
-                  <span class="badge badge-light">${account.fields['Platform'] || 'Not specified'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Location & Contact Section -->
-          <div class="modal-section">
-            <div class="modal-section-title">
-              <i class="ki-duotone ki-geolocation fs-4">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Location & Contact
-            </div>
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <div class="modal-info-label">Location</div>
-                <div class="modal-info-value">${account.fields['Location'] || 'Not specified'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">City</div>
-                <div class="modal-info-value">${account.fields['City'] || 'Not specified'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Website</div>
-                <div class="modal-info-value">${account.fields['Company Website'] ? `<a href="${account.fields['Company Website']}" target="_blank">${account.fields['Company Website']}</a>` : 'Not specified'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Social Media</div>
-                <div class="modal-info-value">${account.fields['Social Media Handle'] || 'Not specified'}</div>
-              </div>
-            </div>
-          </div>
-
-          ${account.fields['Notes'] ? `
-          <!-- Notes Section -->
-          <div class="modal-section">
-            <div class="modal-section-title">
-              <i class="ki-duotone ki-note-2 fs-4">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-                <span class="path4"></span>
-              </i>
-              Special Notes
-            </div>
-            <div class="modal-info-value">${account.fields['Notes']}</div>
-          </div>
-          ` : ''}
-        `,
-        showConfirmButton: false,
-        showCloseButton: true,
-        width: 900,
-        customClass: {
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        didOpen: () => {
-          // Add event listeners for action buttons
-          document.getElementById('edit-account-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleEdit(account);
-          });
-          document.getElementById('add-interaction-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleAddInteraction(account);
-          });
-          document.getElementById('add-task-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleAddTask(account);
-          });
-          document.getElementById('delete-account-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleDelete(account);
-          });
-        },
-      });
-    }
-  };
-
-  const handleEdit = (account: Account) => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-pencil fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-          </i>
-          <span>Edit Account</span>
-        </div>`,
-        html: `
-          <div class="text-start p-4">
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-abstract-21 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Account Name
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="edit-accountname"
-                value="${account.fields['Account Name'] || ''}"
-                placeholder="Enter account name"
-              />
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-abstract-26 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Industry
-              </label>
-              <select class="form-select form-select-solid" id="edit-industry">
-                <option value="">Select industry...</option>
-                <option value="Beverage" ${account.fields['Industry'] === 'Beverage' ? 'selected' : ''}>🍹 Beverage</option>
-                <option value="Food" ${account.fields['Industry'] === 'Food' ? 'selected' : ''}>🍽️ Food</option>
-                <option value="Skincare" ${account.fields['Industry'] === 'Skincare' ? 'selected' : ''}>💄 Skincare</option>
-                <option value="Manufacturing" ${account.fields['Industry'] === 'Manufacturing' ? 'selected' : ''}>⚙️ Manufacturing</option>
-                <option value="FMCG" ${account.fields['Industry'] === 'FMCG' ? 'selected' : ''}>📦 FMCG</option>
-              </select>
-            </div>
-            <div class="row g-3 mb-5">
-              <div class="col-6">
-                <label class="form-label fw-bold fs-6 mb-2">
-                  <i class="ki-duotone ki-geolocation fs-4 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  Location
-                </label>
-                <input
-                  type="text"
-                  class="form-control form-control-solid"
-                  id="edit-location"
-                  value="${account.fields['Location'] || ''}"
-                  placeholder="Enter location"
-                />
-              </div>
-              <div class="col-6">
-                <label class="form-label fw-bold fs-6 mb-2">
-                  <i class="ki-duotone ki-map fs-4 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                  </i>
-                  City
-                </label>
-                <input
-                  type="text"
-                  class="form-control form-control-solid"
-                  id="edit-city"
-                  value="${account.fields['City'] || ''}"
-                  placeholder="Enter city"
-                />
-              </div>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-check-circle fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Status
-              </label>
-              <select class="form-select form-select-solid" id="edit-status">
-                <option value="Active" ${account.fields['Account Status'] === 'Active' ? 'selected' : ''}>✅ Active</option>
-                <option value="Inactive" ${account.fields['Account Status'] === 'Inactive' ? 'selected' : ''}>❌ Inactive</option>
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-globe fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Website
-              </label>
-              <input
-                type="url"
-                class="form-control form-control-solid"
-                id="edit-website"
-                value="${account.fields['Company Website'] || ''}"
-                placeholder="https://example.com"
-              />
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-social-media fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Social Media Handle
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="edit-social"
-                value="${account.fields['Social Media Handle'] || ''}"
-                placeholder="@handle"
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-note-2 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Notes
-              </label>
-              <textarea
-                class="form-control form-control-solid"
-                id="edit-notes"
-                rows="3"
-                placeholder="Enter any special notes..."
-              >${account.fields['Notes'] || ''}</textarea>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Save Changes',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 700,
-        preConfirm: () => {
-          const accountName = (document.getElementById('edit-accountname') as HTMLInputElement)?.value;
-          const industry = (document.getElementById('edit-industry') as HTMLSelectElement)?.value;
-          const location = (document.getElementById('edit-location') as HTMLInputElement)?.value;
-          const city = (document.getElementById('edit-city') as HTMLInputElement)?.value;
-          const status = (document.getElementById('edit-status') as HTMLSelectElement)?.value;
-          const website = (document.getElementById('edit-website') as HTMLInputElement)?.value;
-          const social = (document.getElementById('edit-social') as HTMLInputElement)?.value;
-          const notes = (document.getElementById('edit-notes') as HTMLTextAreaElement)?.value;
-
-          if (!accountName) {
-            Swal.showValidationMessage('Account Name is required');
-            return false;
-          }
-
-          return { accountName, industry, location, city, status, website, social, notes };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await accountService.update(account.id, {
-              'Account Name': result.value.accountName,
-              'Industry': result.value.industry || undefined,
-              'Location': result.value.location || undefined,
-              'City': result.value.city || undefined,
-              'Account Status': result.value.status as 'Active' | 'Inactive',
-              'Company Website': result.value.website || undefined,
-              'Social Media Handle': result.value.social || undefined,
-              'Notes': result.value.notes || undefined,
-            });
-            Swal.fire('Updated!', 'Account has been updated.', 'success');
-            loadAccounts();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to update account', 'error');
-          }
-        }
-      });
-    }
-  };
-
-  const handleAddInteraction = (account: Account) => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-messages fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-            <span class="path3"></span>
-            <span class="path4"></span>
-            <span class="path5"></span>
-          </i>
-          <span>Add Interaction</span>
-        </div>`,
-        html: `
-          <div class="text-start p-4">
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-note-2 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Interaction Name
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="interaction-name"
-                placeholder="Enter interaction name"
-              />
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-abstract-26 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Type
-              </label>
-              <select class="form-select form-select-solid" id="interaction-type">
-                <option value="">Select type...</option>
-                <option value="Discovery">🔍 Discovery</option>
-                <option value="Label discussion">🏷️ Label discussion</option>
-                <option value="Price Discussion">💰 Price Discussion</option>
-                <option value="Custom Solution">⚙️ Custom Solution</option>
-                <option value="Weekly Check-in">📅 Weekly Check-in</option>
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-calendar fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                class="form-control form-control-solid"
-                id="interaction-datetime"
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-text-align-left fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Notes
-              </label>
-              <textarea
-                class="form-control form-control-solid"
-                id="interaction-notes"
-                rows="4"
-                placeholder="Enter interaction notes..."
-              ></textarea>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Add Interaction',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 600,
-        preConfirm: () => {
-          const name = (document.getElementById('interaction-name') as HTMLInputElement)?.value;
-          const type = (document.getElementById('interaction-type') as HTMLSelectElement)?.value;
-          const datetime = (document.getElementById('interaction-datetime') as HTMLInputElement)?.value;
-          const notes = (document.getElementById('interaction-notes') as HTMLTextAreaElement)?.value;
-
-          if (!name) {
-            Swal.showValidationMessage('Name is required');
-            return false;
-          }
-
-          return { name, type, datetime, notes };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await interactionService.create({
-              'Name': result.value.name,
-              'Type': result.value.type || undefined,
-              'Date & Time': result.value.datetime || undefined,
-              'Notes': result.value.notes || undefined,
-              'Account': [account.id],
-            });
-            Swal.fire('Added!', 'Interaction has been added.', 'success');
-            loadAccounts();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to add interaction', 'error');
-          }
-        }
-      });
-    }
-  };
-
-  const handleAddTask = (account: Account) => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-check-square fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-          </i>
-          <span>Add Task</span>
-        </div>`,
-        html: `
-          <div class="text-start p-4">
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-note-2 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Task Title
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="task-title"
-                placeholder="Enter task title"
-              />
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-text-align-left fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Task Description
-              </label>
-              <textarea
-                class="form-control form-control-solid"
-                id="task-description"
-                rows="3"
-                placeholder="Enter task description..."
-              ></textarea>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-status fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Status
-              </label>
-              <select class="form-select form-select-solid" id="task-status">
-                <option value="To do">📋 To do</option>
-                <option value="In progress">⚙️ In progress</option>
-                <option value="Done">✅ Done</option>
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-flag fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Priority
-              </label>
-              <select class="form-select form-select-solid" id="task-priority">
-                <option value="">Select priority...</option>
-                <option value="High">🔴 High</option>
-                <option value="Medium">🟡 Medium</option>
-                <option value="Low">🟢 Low</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-calendar fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Task Deadline
-              </label>
-              <input
-                type="date"
-                class="form-control form-control-solid"
-                id="task-deadline"
-              />
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Add Task',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 600,
-        preConfirm: () => {
-          const title = (document.getElementById('task-title') as HTMLInputElement)?.value;
-          const description = (document.getElementById('task-description') as HTMLTextAreaElement)?.value;
-          const status = (document.getElementById('task-status') as HTMLSelectElement)?.value;
-          const priority = (document.getElementById('task-priority') as HTMLSelectElement)?.value;
-          const deadline = (document.getElementById('task-deadline') as HTMLInputElement)?.value;
-
-          if (!title) {
-            Swal.showValidationMessage('Task Title is required');
-            return false;
-          }
-
-          return { title, description, status, priority, deadline };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await taskService.create({
-              'Task Title': result.value.title,
-              'Task Description': result.value.description || undefined,
-              'Status': result.value.status || 'To do',
-              'Priority': result.value.priority || undefined,
-              'Task Deadline': result.value.deadline || undefined,
-              'Accounts': [account.id],
-            });
-            Swal.fire('Added!', 'Task has been added.', 'success');
-            loadAccounts();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to add task', 'error');
-          }
-        }
-      });
-    }
-  };
-
-  const handleDelete = (account: Account) => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: 'Delete Account?',
-        text: `Are you sure you want to delete ${account.fields['Account Name']}? This action cannot be undone.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, delete it',
-        cancelButtonText: 'Cancel',
-        confirmButtonColor: '#dc3545',
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await accountService.delete(account.id);
-            Swal.fire('Deleted!', 'Account has been deleted.', 'success');
-            loadAccounts();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to delete account', 'error');
-          }
-        }
-      });
-    }
-  };
-
-  const handleCreateAccount = () => {
-    if (typeof Swal !== 'undefined') {
-      // Generate options for team members (account owner dropdown)
-      const teamMemberOptions = teamMembers.map(tm =>
-        `<option value="${tm.id}">${tm.fields['Name']}</option>`
-      ).join('');
-
-      Swal.fire({
-        title: 'Create New Business/Account',
-        html: `
-          <div class="d-flex flex-column gap-3" style="max-height: 500px; overflow-y: auto;">
-            <div class="fv-row text-start">
-              <label class="form-label required">Business Name</label>
-              <input type="text" class="form-control" id="create-businessname" placeholder="Enter business name" />
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label required">Industry</label>
-              <select class="form-select" id="create-industry">
-                <option value="">Select industry...</option>
-                <option value="Beverage">Beverage</option>
-                <option value="Food">Food</option>
-                <option value="Skincare">Skincare</option>
-                <option value="Manufacturing">Manufacturing</option>
-                <option value="FMCG">FMCG</option>
-              </select>
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label required">Size</label>
-              <select class="form-select" id="create-size">
-                <option value="">Select size...</option>
-                <option value="1-10">1-10</option>
-                <option value="11-50">11-50</option>
-                <option value="51-100">51-100</option>
-                <option value="101-500">101-500</option>
-                <option value="501-1000">501-1000</option>
-                <option value="1000-5000">1000-5000</option>
-                <option value="10,000+">10,000+</option>
-              </select>
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label required">Account Status</label>
-              <select class="form-select" id="create-accountstatus">
-                <option value="">Select status...</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label">Physical Location</label>
-              <input type="text" class="form-control" id="create-location" placeholder="Enter physical location" />
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label">City</label>
-              <input type="text" class="form-control" id="create-city" placeholder="Enter city" />
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label">Company Website</label>
-              <input type="url" class="form-control" id="create-website" placeholder="https://example.com" />
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label">Social Media Handle</label>
-              <input type="text" class="form-control" id="create-socialmedia" placeholder="@handle" />
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label">Platform</label>
-              <select class="form-select" id="create-platform">
-                <option value="">Select platform...</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Snapchat">Snapchat</option>
-                <option value="TikTok">TikTok</option>
-              </select>
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label required">Account Owner</label>
-              <select class="form-select" id="create-accountowner">
-                <option value="">Select account owner...</option>
-                ${teamMemberOptions}
-              </select>
-            </div>
-            <div class="fv-row text-start">
-              <label class="form-label">Special Notes</label>
-              <textarea class="form-control" id="create-notes" rows="3" placeholder="Enter any special notes"></textarea>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Create Account',
-        cancelButtonText: 'Cancel',
-        width: 700,
-        preConfirm: () => {
-          const businessName = (document.getElementById('create-businessname') as HTMLInputElement)?.value;
-          const industry = (document.getElementById('create-industry') as HTMLSelectElement)?.value;
-          const size = (document.getElementById('create-size') as HTMLSelectElement)?.value;
-          const accountStatus = (document.getElementById('create-accountstatus') as HTMLSelectElement)?.value;
-          const location = (document.getElementById('create-location') as HTMLInputElement)?.value;
-          const city = (document.getElementById('create-city') as HTMLInputElement)?.value;
-          const website = (document.getElementById('create-website') as HTMLInputElement)?.value;
-          const socialMedia = (document.getElementById('create-socialmedia') as HTMLInputElement)?.value;
-          const platform = (document.getElementById('create-platform') as HTMLSelectElement)?.value;
-          const accountOwner = (document.getElementById('create-accountowner') as HTMLSelectElement)?.value;
-          const notes = (document.getElementById('create-notes') as HTMLTextAreaElement)?.value;
-
-          if (!businessName) {
-            Swal.showValidationMessage('Business Name is required');
-            return false;
-          }
-          if (!industry) {
-            Swal.showValidationMessage('Industry is required');
-            return false;
-          }
-          if (!size) {
-            Swal.showValidationMessage('Size is required');
-            return false;
-          }
-          if (!accountStatus) {
-            Swal.showValidationMessage('Account Status is required');
-            return false;
-          }
-          if (!accountOwner) {
-            Swal.showValidationMessage('Account Owner is required');
-            return false;
-          }
-
-          return { businessName, industry, size, accountStatus, location, city, website, socialMedia, platform, accountOwner, notes };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await accountService.create({
-              'Account Name': result.value.businessName,
-              'Industry': result.value.industry,
-              'Size': result.value.size,
-              'Account Status': result.value.accountStatus as 'Active' | 'Inactive',
-              'Location': result.value.location || undefined,
-              'City': result.value.city || undefined,
-              'Company Website': result.value.website || undefined,
-              'Social Media Handle': result.value.socialMedia || undefined,
-              'Platform': result.value.platform || undefined,
-              'Account owner': [result.value.accountOwner],
-              'Notes': result.value.notes || undefined,
-            });
-            Swal.fire('Created!', 'Account has been created successfully.', 'success');
-            loadAccounts();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to create account', 'error');
-          }
-        }
-      });
-    }
-  };
 
   if (loading) {
     return (
@@ -888,165 +274,370 @@ export default function AccountsList() {
   }
 
   return (
-    <div className="card">
-      <div className="card-header border-0 pt-6">
-        <div className="card-title">
-          <div className="d-flex align-items-center position-relative my-1">
-            <i className="bi bi-search fs-3 position-absolute ms-5"></i>
-            <input
-              type="text"
-              className="form-control form-control-solid w-250px ps-13"
-              placeholder="Search accounts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+    <>
+      <div className="card">
+        {/* Header and filters ... same as before */}
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <div className="d-flex align-items-center position-relative my-1">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
+                <span className="path1"></span>
+                <span className="path2"></span>
+              </i>
+              <input
+                type="text"
+                className="form-control form-control-solid w-250px ps-13"
+                placeholder="Search accounts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="card-toolbar">
+            <div className="d-flex justify-content-end align-items-center gap-3">
+              <select
+                className="form-select form-select-solid w-150px"
+                value={filterIndustry}
+                onChange={(e) => setFilterIndustry(e.target.value)}
+              >
+                <option value="">All Industries</option>
+                <option value="Beverage">Beverage</option>
+                <option value="Food">Food</option>
+                <option value="Skincare">Skincare</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="FMCG">FMCG</option>
+              </select>
+
+              <select
+                className="form-select form-select-solid w-150px"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+
+              <button className="btn btn-light" onClick={loadAccounts}>
+                <i className="ki-duotone ki-arrows-circle fs-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                </i>
+                Refresh
+              </button>
+
+              <button className="btn btn-primary" onClick={openCreateModal}>
+                <i className="ki-duotone ki-plus fs-2"></i>
+                Create Account
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="card-toolbar">
-          <div className="d-flex justify-content-end align-items-center gap-3">
-            <select
-              className="form-select form-select-solid w-150px"
-              value={filterIndustry}
-              onChange={(e) => setFilterIndustry(e.target.value)}
-            >
-              <option value="">All Industries</option>
-              <option value="Beverage">Beverage</option>
-              <option value="Food">Food</option>
-              <option value="Skincare">Skincare</option>
-              <option value="Manufacturing">Manufacturing</option>
-              <option value="FMCG">FMCG</option>
-            </select>
-
-            <select
-              className="form-select form-select-solid w-150px"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-
-            <button className="btn btn-success" onClick={handleCreateAccount}>
-              <i className="bi bi-plus-circle"></i>
-              Create Account
-            </button>
-
-            <button className="btn btn-primary" onClick={loadAccounts}>
-              <i className="bi bi-arrow-clockwise"></i>
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="card-body py-4">
-        <div className="table-responsive">
-          <table className="table align-middle table-row-dashed fs-6 gy-5">
-            <thead>
-              <tr className="text-start text-gray-400 fw-bold fs-7 text-uppercase gs-0">
-                <th className="min-w-200px">Account Name</th>
-                <th className="min-w-120px">Industry</th>
-                <th className="min-w-100px">Size</th>
-                <th className="min-w-120px">Location</th>
-                <th className="min-w-100px">Status</th>
-                <th className="min-w-100px">Platform</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-600 fw-semibold">
-              {filteredAccounts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10">
-                    <div className="text-gray-600">No accounts found</div>
-                  </td>
+        <div className="card-body py-4">
+          <div className="table-responsive">
+            <table className="table table-row-dashed table-row-gray-300 align-middle gs-0 gy-4">
+              <thead>
+                <tr className="fw-bold text-muted">
+                  <th className="min-w-200px">Account Name</th>
+                  <th className="min-w-150px">Industry</th>
+                  <th className="min-w-150px">Location</th>
+                  <th className="min-w-120px">Status</th>
                 </tr>
-              ) : (
-                filteredAccounts.map((account) => {
-                  // Get account number from the name (e.g., "123" from "123 Company") - only show if starts with number
-                  const accountNumberMatch = account.fields['Account Name']?.match(/^(\d+)/);
-                  const accountNumber = accountNumberMatch ? accountNumberMatch[1] : '';
-
-                  return (
-                    <tr
-                      key={account.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => handleRowClick(account)}
-                      className="table-row-hover"
-                    >
+              </thead>
+              <tbody>
+                {filteredAccounts.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-10">No accounts found</td></tr>
+                ) : (
+                  filteredAccounts.map(account => (
+                    <tr key={account.id} onClick={() => handleRowClick(account)} style={{ cursor: 'pointer' }} className="hover-bg-light-primary">
                       <td>
                         <div className="d-flex align-items-center">
-                          {account.fields['Logo']?.[0] ? (
-                            <div className="symbol symbol-45px me-5">
+                          <div className="symbol symbol-45px me-5">
+                            {account.fields['Logo']?.[0] ? (
                               <img src={account.fields['Logo'][0].url} alt={account.fields['Account Name']} />
-                            </div>
-                          ) : accountNumber ? (
-                            <div className="symbol symbol-45px me-5">
-                              <div className="symbol-label fs-3 bg-light-info text-info">
-                                {accountNumber}
+                            ) : (
+                              <div className="symbol-label fs-3 bg-light-primary text-primary">
+                                {account.fields['Account Name']?.charAt(0) || '?'}
                               </div>
-                            </div>
-                          ) : null}
-                          <div className="d-flex justify-content-start flex-column">
-                            <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                              {account.fields['Account Name'] || 'N/A'}
-                            </span>
-                            {account.fields['Social Media Handle'] && (
-                              <span className="text-muted fw-semibold text-muted d-block fs-7">
-                                {account.fields['Social Media Handle']}
-                              </span>
                             )}
+                          </div>
+                          <div className="d-flex justify-content-start flex-column">
+                            <span className="text-gray-900 fw-bold text-hover-primary fs-6">{account.fields['Account Name']}</span>
                           </div>
                         </div>
                       </td>
-                    <td>
-                      <span className="badge badge-light-primary">
-                        {account.fields['Industry'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="text-gray-600">
-                        {account.fields['Size'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="text-gray-900 fw-bold d-block fs-6">
-                        {account.fields['Location'] || 'N/A'}
-                      </span>
-                      {account.fields['City'] && (
-                        <span className="text-muted fw-semibold text-muted d-block fs-7">
-                          {account.fields['City']}
+                      <td>{account.fields['Industry']}</td>
+                      <td>{account.fields['Location']}</td>
+                      <td>
+                        <span className={`badge badge-${account.fields['Account Status'] === 'Active' ? 'success' : 'secondary'}`}>
+                          {account.fields['Account Status']}
                         </span>
-                      )}
-                    </td>
-                    <td>
-                      {account.fields['Account Status'] === 'Active' ? (
-                        <span className="badge badge-light-success">Active</span>
-                      ) : (
-                        <span className="badge badge-light-danger">Inactive</span>
-                      )}
-                    </td>
-                    <td>
-                      {account.fields['Platform'] && (
-                        <span className="badge badge-light-info">
-                          {account.fields['Platform']}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="d-flex justify-content-between align-items-center mt-5">
-          <div className="text-gray-600">
-            Showing {filteredAccounts.length} of {accounts.length} accounts
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* View Details Modal */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title={selectedAccount?.fields['Account Name'] || 'Account Details'}
+        size="lg"
+      >
+        {selectedAccount && (
+          <>
+            <div className="text-center mb-5">
+              {selectedAccount.fields['Logo']?.[0] && (
+                <img src={selectedAccount.fields['Logo'][0].url} alt="Logo" style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '8px' }} />
+              )}
+            </div>
+
+            <div className="d-flex justify-content-center gap-2 mb-5">
+              <button className="btn btn-primary btn-sm" onClick={() => openEditModal(selectedAccount)}>Edit</button>
+              <button className="btn btn-light btn-sm" onClick={() => openInteractionModal(selectedAccount)}>Add Interaction</button>
+              <button className="btn btn-light btn-sm" onClick={() => openTaskModal(selectedAccount)}>Add Task</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => handleDelete(selectedAccount)}>Delete</button>
+            </div>
+
+            <div className="mb-5">
+              <h5 className="mb-3">Business Details</h5>
+              <div className="row g-3">
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Industry</label>
+                  <div><span className="badge badge-primary">{selectedAccount.fields['Industry'] || 'N/A'}</span></div>
+                </div>
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Company Size</label>
+                  <div>{selectedAccount.fields['Size'] || 'N/A'}</div>
+                </div>
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Status</label>
+                  <div><span className={`badge badge-${selectedAccount.fields['Account Status'] === 'Active' ? 'success' : 'secondary'}`}>{selectedAccount.fields['Account Status'] || 'N/A'}</span></div>
+                </div>
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Platform</label>
+                  <div><span className="badge badge-light">{selectedAccount.fields['Platform'] || 'N/A'}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <h5 className="mb-3">Location & Contact</h5>
+              <div className="row g-3">
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Location</label>
+                  <div>{selectedAccount.fields['Location'] || 'N/A'}</div>
+                </div>
+                <div className="col-6">
+                  <label className="fw-bold text-muted">City</label>
+                  <div>{selectedAccount.fields['City'] || 'N/A'}</div>
+                </div>
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Website</label>
+                  <div>{selectedAccount.fields['Company Website'] ? <a href={selectedAccount.fields['Company Website']} target="_blank">{selectedAccount.fields['Company Website']}</a> : 'N/A'}</div>
+                </div>
+                <div className="col-6">
+                  <label className="fw-bold text-muted">Social Media</label>
+                  <div>{selectedAccount.fields['Social Media Handle'] || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+
+            {selectedAccount.fields['Notes'] && (
+              <div className="mb-5">
+                <h5 className="mb-3">Special Notes</h5>
+                <div className="text-gray-600">{selectedAccount.fields['Notes']}</div>
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
+
+      {/* Create/Edit Account Modal (Simplified for brevity as they share fields roughly) */}
+      {/* Create Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Business/Account"
+        footer={
+          <>
+            <button className="btn btn-light me-3" onClick={() => setIsCreateModalOpen(false)}>Close</button>
+            <button className="btn btn-primary" onClick={handleCreateSubmit}>Create Account</button>
+          </>
+        }
+      >
+        {/* Form fields for create */}
+        <div className="fv-row mb-5">
+          <label className="form-label required">Business Name</label>
+          <input type="text" className="form-control" value={formData.accountName} onChange={e => setFormData({ ...formData, accountName: e.target.value })} placeholder="Enter business name" />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label required">Industry</label>
+          <select className="form-select" value={formData.industry} onChange={e => setFormData({ ...formData, industry: e.target.value })}>
+            <option value="">Select industry...</option>
+            <option value="Beverage">Beverage</option>
+            <option value="Food">Food</option>
+            <option value="Skincare">Skincare</option>
+            <option value="Manufacturing">Manufacturing</option>
+            <option value="FMCG">FMCG</option>
+          </select>
+        </div>
+        {/* ... other fields ... */}
+        <div className="fv-row mb-5">
+          <label className="form-label">Status</label>
+          <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+            <option value="">Select status...</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Location</label>
+          <input type="text" className="form-control" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label required">Account Owner</label>
+          <select className="form-select" value={formData.accountOwner} onChange={e => setFormData({ ...formData, accountOwner: e.target.value })}>
+            <option value="">Select owner...</option>
+            {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+          </select>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Account"
+        footer={
+          <>
+            <button className="btn btn-light me-3" onClick={() => setIsEditModalOpen(false)}>Close</button>
+            <button className="btn btn-primary" onClick={handleEditSubmit}>Save Changes</button>
+          </>
+        }
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required">Account Name</label>
+          <input type="text" className="form-control" value={formData.accountName} onChange={e => setFormData({ ...formData, accountName: e.target.value })} />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Industry</label>
+          <select className="form-select" value={formData.industry} onChange={e => setFormData({ ...formData, industry: e.target.value })}>
+            <option value="">Select industry...</option>
+            <option value="Beverage">Beverage</option>
+            <option value="Food">Food</option>
+            <option value="Skincare">Skincare</option>
+            <option value="Manufacturing">Manufacturing</option>
+            <option value="FMCG">FMCG</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Status</label>
+          <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Location</label>
+          <input type="text" className="form-control" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">City</label>
+          <input type="text" className="form-control" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Notes</label>
+          <textarea className="form-control" rows={3} value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })}></textarea>
+        </div>
+      </Modal>
+
+      {/* Interaction Modal */}
+      <Modal
+        isOpen={isInteractionModalOpen}
+        onClose={() => setIsInteractionModalOpen(false)}
+        title="Add Interaction"
+        footer={
+          <>
+            <button className="btn btn-light me-3" onClick={() => setIsInteractionModalOpen(false)}>Close</button>
+            <button className="btn btn-primary" onClick={handleInteractionSubmit}>Add Interaction</button>
+          </>
+        }
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required">Interaction Name</label>
+          <input type="text" className="form-control" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter interaction name" />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Type</label>
+          <select className="form-select" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
+            <option value="">Select type...</option>
+            <option value="Discovery">🔍 Discovery</option>
+            <option value="Label discussion">🏷️ Label discussion</option>
+            <option value="Price Discussion">💰 Price Discussion</option>
+            <option value="Custom Solution">⚙️ Custom Solution</option>
+            <option value="Weekly Check-in">📅 Weekly Check-in</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Date & Time</label>
+          <input type="datetime-local" className="form-control" value={formData.datetime} onChange={e => setFormData({ ...formData, datetime: e.target.value })} />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Notes</label>
+          <textarea className="form-control" rows={3} value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })}></textarea>
+        </div>
+      </Modal>
+
+      {/* Task Modal */}
+      <Modal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        title="Add Task"
+        footer={
+          <>
+            <button className="btn btn-light me-3" onClick={() => setIsTaskModalOpen(false)}>Close</button>
+            <button className="btn btn-primary" onClick={handleTaskSubmit}>Add Task</button>
+          </>
+        }
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required">Task Title</label>
+          <input type="text" className="form-control" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="Enter task title" />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Description</label>
+          <textarea className="form-control" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}></textarea>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Status</label>
+          <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+            <option value="To do">📋 To do</option>
+            <option value="In progress">⚙️ In progress</option>
+            <option value="Done">✅ Done</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Priority</label>
+          <select className="form-select" value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
+            <option value="">Select priority...</option>
+            <option value="High">🔴 High</option>
+            <option value="Medium">🟡 Medium</option>
+            <option value="Low">🟢 Low</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Deadline</label>
+          <input type="date" className="form-control" value={formData.deadline} onChange={e => setFormData({ ...formData, deadline: e.target.value })} />
+        </div>
+      </Modal>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { teamMemberService } from '../../services/airtable.service';
 import type { TeamMember } from '../../types/airtable.types';
+import Modal from '../Common/Modal';
 
 declare const $: any;
 declare const Swal: any;
@@ -11,6 +12,14 @@ export default function TeamMembersList() {
   const [error, setError] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const dataTableRef = useRef<any>(null);
+
+  // Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+
+  // Form State
+  const [formData, setFormData] = useState({ name: '', email: '', role: '' });
 
   useEffect(() => {
     loadData();
@@ -61,18 +70,6 @@ export default function TeamMembersList() {
     try {
       setLoading(true);
       const teamMembersData = await teamMemberService.getAll();
-
-      // Debug: Log team members data structure
-      if (teamMembersData.length > 0) {
-        console.log('=== TEAM MEMBERS DATA STRUCTURE ===');
-        console.log('First team member record:', teamMembersData[0]);
-        console.log('Name:', teamMembersData[0].fields['Name']);
-        console.log('Email:', teamMembersData[0].fields['Email']);
-        console.log('Role:', teamMembersData[0].fields['Role']);
-        console.log('All fields:', Object.keys(teamMembersData[0].fields));
-        console.log('Total team members loaded:', teamMembersData.length);
-      }
-
       setTeamMembers(teamMembersData);
       setError(null);
     } catch (err) {
@@ -108,196 +105,35 @@ export default function TeamMembersList() {
   };
 
   const handleMemberClick = (member: TeamMember) => {
-    if (typeof Swal !== 'undefined') {
-      // Debug: Log modal data
-      console.log('=== TEAM MEMBER MODAL ===');
-      console.log('Member clicked:', member);
-      console.log('Modal Label: Full Name | Value:', member.fields['Name'] || 'N/A');
-      console.log('Modal Label: Email Address | Value:', member.fields['Email'] || 'N/A');
-      console.log('Modal Label: Role | Value:', member.fields['Role'] || 'Team Member');
-
-      Swal.fire({
-        title: member.fields['Name'] || 'Team Member',
-        html: `
-          <!-- Profile Avatar -->
-          <div class="modal-section" style="text-align: center;">
-            <div class="symbol symbol-circle symbol-100px d-inline-block">
-              <div class="symbol-label fs-1" style="background-color: ${getRandomColor(member.fields['Name'])}">
-                <span class="text-white fw-bold">
-                  ${getInitials(member.fields['Name'])}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Profile Information -->
-          <div class="modal-section">
-            <div class="modal-section-title">
-              <i class="ki-duotone ki-user-tick fs-4">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-              </i>
-              Profile Information
-            </div>
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <div class="modal-info-label">Full Name</div>
-                <div class="modal-info-value">${member.fields['Name'] || 'N/A'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Email Address</div>
-                <div class="modal-info-value">${member.fields['Email'] ? `<a href="mailto:${member.fields['Email']}">${member.fields['Email']}</a>` : 'N/A'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Role</div>
-                <div class="modal-info-value">
-                  <span class="badge badge-primary">${member.fields['Role'] || 'Team Member'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        `,
-        showConfirmButton: true,
-        confirmButtonText: 'Close',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-light',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 600,
-      });
-    }
+    setSelectedMember(member);
+    setIsViewModalOpen(true);
   };
 
-  const handleAddTeamMember = () => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: 'Add Team Member',
-        html: `
-          <div class="modal-form-section">
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-profile-circle fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Full Name
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="member-name"
-                placeholder="Enter full name"
-              />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-sms fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Email Address
-              </label>
-              <input
-                type="email"
-                class="form-control form-control-solid"
-                id="member-email"
-                placeholder="Enter email address"
-              />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label">
-                <i class="ki-duotone ki-briefcase fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Role
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="member-role"
-                placeholder="e.g., Sales Manager, Designer"
-              />
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Add Member',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 600,
-        preConfirm: () => {
-          const name = (document.getElementById('member-name') as HTMLInputElement)?.value;
-          const email = (document.getElementById('member-email') as HTMLInputElement)?.value;
-          const role = (document.getElementById('member-role') as HTMLInputElement)?.value;
+  const openAddModal = () => {
+    setFormData({ name: '', email: '', role: '' });
+    setIsAddModalOpen(true);
+  };
 
-          // Debug: Log form submission values
-          console.log('=== ADD TEAM MEMBER FORM ===');
-          console.log('Form Field: Full Name | Value:', name);
-          console.log('Form Field: Email Address | Value:', email);
-          console.log('Form Field: Role | Value:', role || 'Team Member');
+  const handleAddSubmit = async () => {
+    if (!formData.name || !formData.email) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Please fill in all required fields' });
+      return;
+    }
 
-          if (!name || !email) {
-            Swal.showValidationMessage('Please fill in all required fields');
-            return false;
-          }
+    try {
+      const createData = {
+        'Name': formData.name,
+        'Email': formData.email,
+        'Role': formData.role || 'Team Member',
+      };
 
-          return { name, email, role };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            const createData = {
-              'Name': result.value.name,
-              'Email': result.value.email,
-              'Role': result.value.role || 'Team Member',
-            };
-
-            // Debug: Log data being sent to Airtable
-            console.log('=== CREATING TEAM MEMBER ===');
-            console.log('Data being sent to Airtable:', createData);
-
-            await teamMemberService.create(createData);
-
-            Swal.fire({
-              title: 'Success!',
-              text: 'Team member has been added',
-              icon: 'success',
-              confirmButtonText: 'OK',
-              buttonsStyling: false,
-              customClass: {
-                confirmButton: 'btn btn-primary',
-              },
-            });
-
-            loadData();
-          } catch (error) {
-            console.error('Error creating team member:', error);
-            Swal.fire({
-              title: 'Error!',
-              text: 'Failed to create team member',
-              icon: 'error',
-              confirmButtonText: 'OK',
-              buttonsStyling: false,
-              customClass: {
-                confirmButton: 'btn btn-primary',
-              },
-            });
-          }
-        }
-      });
+      await teamMemberService.create(createData);
+      Swal.fire('Success!', 'Team member has been added', 'success');
+      loadData();
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error creating team member:', error);
+      Swal.fire('Error!', 'Failed to create team member', 'error');
     }
   };
 
@@ -323,63 +159,54 @@ export default function TeamMembersList() {
   }
 
   return (
-    <div className="card">
-      <div className="card-header border-0 pt-6">
-        <div className="card-title">
-          <div className="d-flex align-items-center position-relative my-1">
-            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-              <span className="path1"></span>
-              <span className="path2"></span>
-            </i>
-            <input
-              type="text"
-              className="form-control form-control-solid w-250px ps-13"
-              placeholder="Search team members..."
-              onChange={(e) => {
-                if (dataTableRef.current) {
-                  dataTableRef.current.search(e.target.value).draw();
-                }
-              }}
-            />
-          </div>
-        </div>
-        <div className="card-toolbar">
-          <div className="d-flex align-items-center gap-3">
-            <div className="badge badge-light fs-6">
-              Total Members: {teamMembers.length}
-            </div>
-            <button className="btn btn-primary btn-sm" onClick={handleAddTeamMember}>
-              <i className="ki-duotone ki-plus fs-2">
+    <>
+      <div className="card">
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <div className="d-flex align-items-center position-relative my-1">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
                 <span className="path1"></span>
                 <span className="path2"></span>
               </i>
-              Add Team Member
-            </button>
+              <input
+                type="text"
+                className="form-control form-control-solid w-250px ps-13"
+                placeholder="Search team members..."
+                onChange={(e) => {
+                  if (dataTableRef.current) {
+                    dataTableRef.current.search(e.target.value).draw();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="card-toolbar">
+            <div className="d-flex align-items-center gap-3">
+              <div className="badge badge-light fs-6">
+                Total Members: {teamMembers.length}
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={openAddModal}>
+                <i className="ki-duotone ki-plus fs-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                </i>
+                Add Team Member
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="card-body pt-0">
-        <table className="table align-middle table-row-dashed fs-6 gy-5" ref={tableRef}>
-          <thead>
-            <tr className="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-              <th className="min-w-250px">Team Member</th>
-              <th className="min-w-150px">Email</th>
-              <th className="min-w-150px">Role</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-600 fw-semibold">
-            {teamMembers.map((member) => {
-              // Debug: Log table row data
-              console.log('=== RENDERING TABLE ROW ===');
-              console.log('Member ID:', member.id);
-              console.log('Table Column: Team Member (Name) | Value:', member.fields['Name'] || 'Unknown');
-              console.log('Table Column: Email | Value:', member.fields['Email'] || 'N/A');
-              console.log('Table Column: Role | Value:', member.fields['Role'] || 'Team Member');
-              console.log('Initials:', getInitials(member.fields['Name']));
-              console.log('Color:', getRandomColor(member.fields['Name']));
-
-              return (
+        <div className="card-body pt-0">
+          <table className="table align-middle table-row-dashed fs-6 gy-5" ref={tableRef}>
+            <thead>
+              <tr className="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                <th className="min-w-250px">Team Member</th>
+                <th className="min-w-150px">Email</th>
+                <th className="min-w-150px">Role</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-600 fw-semibold">
+              {teamMembers.map((member) => (
                 <tr
                   key={member.id}
                   style={{ cursor: 'pointer' }}
@@ -420,11 +247,125 @@ export default function TeamMembersList() {
                     </span>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* Add Member Modal */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add Team Member"
+        footer={
+          <>
+            <button type="button" className="btn btn-light me-3" onClick={() => setIsAddModalOpen(false)}>Close</button>
+            <button type="button" className="btn btn-primary" onClick={handleAddSubmit}>Add Member</button>
+          </>
+        }
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required">
+            <i className="ki-duotone ki-profile-circle fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+            </i>
+            Full Name
+          </label>
+          <input
+            type="text"
+            className="form-control form-control-solid"
+            placeholder="Enter full name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label required">
+            <i className="ki-duotone ki-sms fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Email Address
+          </label>
+          <input
+            type="email"
+            className="form-control form-control-solid"
+            placeholder="Enter email address"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">
+            <i className="ki-duotone ki-briefcase fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Role
+          </label>
+          <input
+            type="text"
+            className="form-control form-control-solid"
+            placeholder="e.g., Sales Manager, Designer"
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+          />
+        </div>
+      </Modal>
+
+      {/* View Member Modal */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title={selectedMember?.fields['Name'] || 'Team Member'}
+        footer={
+          <button type="button" className="btn btn-light" onClick={() => setIsViewModalOpen(false)}>Close</button>
+        }
+      >
+        {selectedMember && (
+          <>
+            <div className="text-center mb-5">
+              <div className="symbol symbol-circle symbol-100px d-inline-block">
+                <div className="symbol-label fs-1" style={{ backgroundColor: getRandomColor(selectedMember.fields['Name']) }}>
+                  <span className="text-white fw-bold">
+                    {getInitials(selectedMember.fields['Name'])}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-0">
+              <h4 className="border-bottom pb-2 mb-4">
+                <i className="ki-duotone ki-user-tick fs-2 me-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                  <span className="path3"></span>
+                </i>
+                Profile Information
+              </h4>
+              <div className="row g-5">
+                <div className="col-12">
+                  <label className="fw-bold text-muted d-block mb-1">Full Name</label>
+                  <span className="fw-bolder fs-6 text-gray-800">{selectedMember.fields['Name'] || 'N/A'}</span>
+                </div>
+                <div className="col-12">
+                  <label className="fw-bold text-muted d-block mb-1">Email Address</label>
+                  <span className="fw-bolder fs-6 text-gray-800">
+                    {selectedMember.fields['Email'] ? <a href={`mailto:${selectedMember.fields['Email']}`}>{selectedMember.fields['Email']}</a> : 'N/A'}
+                  </span>
+                </div>
+                <div className="col-12">
+                  <label className="fw-bold text-muted d-block mb-1">Role</label>
+                  <span className="badge badge-primary fs-7">{selectedMember.fields['Role'] || 'Team Member'}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </Modal>
+    </>
   );
 }

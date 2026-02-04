@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { contactService, activityService, dealsService, teamMemberService } from '../../services/airtable.service';
 import type { Contact, Deal, TeamMember, Activity } from '../../types/airtable.types';
+import Modal from '../Common/Modal';
 
 declare const Swal: any;
 
@@ -11,8 +12,24 @@ export default function ContactsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
 
+  // Dropdown data
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+
+  // Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+  // Form State
+  const [formData, setFormData] = useState<any>({});
+
   useEffect(() => {
     loadContacts();
+    loadDependencies();
   }, []);
 
   const loadContacts = async () => {
@@ -29,591 +46,96 @@ export default function ContactsList() {
     }
   };
 
-  const handleCreateContact = async () => {
-    if (typeof Swal === 'undefined') return;
-
+  const loadDependencies = async () => {
     try {
-      // Fetch team members for the Created by dropdown
-      const teamMembers = await teamMemberService.getAll();
-
-      const { value: formValues } = await Swal.fire({
-        title: 'Create New Contact',
-        html: `
-          <div class="modal-form-section">
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-phone fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Phone Number
-              </label>
-              <input
-                id="phone"
-                class="form-control form-control-solid"
-                placeholder="Enter phone number"
-                required
-              />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label">
-                <i class="ki-duotone ki-profile-circle fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Full Name
-              </label>
-              <input
-                id="name"
-                class="form-control form-control-solid"
-                placeholder="Enter full name"
-              />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label">
-                <i class="ki-duotone ki-sms fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                class="form-control form-control-solid"
-                placeholder="Enter email address"
-              />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label">
-                <i class="ki-duotone ki-user-tick fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Created By
-              </label>
-              <select id="createdBy" class="form-select form-select-solid">
-                <option value="">Select creator...</option>
-                ${teamMembers.map((member: TeamMember) =>
-                  `<option value="${member.id}">${member.fields['Name']}</option>`
-                ).join('')}
-              </select>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Create Contact',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 600,
-        preConfirm: () => {
-          const phone = (document.getElementById('phone') as HTMLInputElement).value;
-          const name = (document.getElementById('name') as HTMLInputElement).value;
-          const email = (document.getElementById('email') as HTMLInputElement).value;
-          const createdBy = (document.getElementById('createdBy') as HTMLSelectElement).value;
-
-          if (!phone) {
-            Swal.showValidationMessage('Phone number is required');
-            return false;
-          }
-
-          return { phone, name, email, createdBy };
-        },
-      });
-
-      if (formValues) {
-        // Build contact data object
-        const contactData: Partial<Contact['fields']> & { Phone: string } = {
-          Phone: formValues.phone,
-        };
-
-        // Add optional fields only if they have values
-        if (formValues.name) {
-          contactData.Name = formValues.name;
-        }
-
-        if (formValues.email) {
-          contactData.Email = formValues.email;
-        }
-
-        if (formValues.createdBy) {
-          contactData['Created by'] = [formValues.createdBy];
-        }
-
-        await contactService.create(contactData as Contact['fields']);
-
-        await Swal.fire('Created!', 'Contact has been created successfully.', 'success');
-        loadContacts();
-      }
-    } catch (error) {
-      Swal.fire('Error', 'Failed to create contact', 'error');
-      console.error(error);
-    }
-  };
-
-  const handleContactClick = async (contact: Contact) => {
-    if (typeof Swal === 'undefined') return;
-
-    await Swal.fire({
-      title: `${contact.fields['Name'] || 'Contact Details'}`,
-      html: `
-        <!-- Action Buttons Bar -->
-        <div class="modal-actions-bar">
-          <button class="btn btn-primary" data-action="add-activity">
-            <i class="ki-duotone ki-calendar-add fs-5 me-1">
-              <span class="path1"></span>
-              <span class="path2"></span>
-              <span class="path3"></span>
-              <span class="path4"></span>
-            </i>
-            Add Activity
-          </button>
-          <button class="btn btn-light" data-action="edit">
-            <i class="ki-duotone ki-pencil fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
-            Edit
-          </button>
-          <button class="btn btn-secondary" data-action="delete">
-            <i class="ki-duotone ki-trash fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-            Delete
-          </button>
-        </div>
-
-        <!-- Contact Information Section -->
-        <div class="modal-section">
-          <div class="modal-section-title">
-            <i class="ki-duotone ki-profile-circle fs-4">
-              <span class="path1"></span>
-              <span class="path2"></span>
-              <span class="path3"></span>
-            </i>
-            Contact Information
-          </div>
-          <div class="modal-info-grid">
-            <div class="modal-info-item">
-              <div class="modal-info-label">Contact ID</div>
-              <div class="modal-info-value">${contact.fields['Contact ID'] || 'N/A'}</div>
-            </div>
-            <div class="modal-info-item">
-              <div class="modal-info-label">Phone Number</div>
-              <div class="modal-info-value">${contact.fields['Phone'] || 'N/A'}</div>
-            </div>
-            <div class="modal-info-item">
-              <div class="modal-info-label">Email Address</div>
-              <div class="modal-info-value">${contact.fields['Email'] || 'N/A'}</div>
-            </div>
-            <div class="modal-info-item">
-              <div class="modal-info-label">Created On</div>
-              <div class="modal-info-value">${contact.fields['Created on'] ? new Date(contact.fields['Created on']).toLocaleDateString() : 'N/A'}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Lead Status Section -->
-        ${contact.fields['Lead Status'] && Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].length > 0 ? `
-        <div class="modal-section">
-          <div class="modal-section-title">
-            <i class="ki-duotone ki-chart-simple fs-4">
-              <span class="path1"></span>
-              <span class="path2"></span>
-              <span class="path3"></span>
-              <span class="path4"></span>
-            </i>
-            Lead Status
-          </div>
-          <div class="modal-info-grid">
-            <div class="modal-info-item">
-              <div class="modal-info-label">Status</div>
-              <div class="modal-info-value">
-                ${contact.fields['Lead Status'].map(status => {
-                  return `<span class="badge badge-primary me-1 mb-1">${status}</span>`;
-                }).join('')}
-              </div>
-            </div>
-          </div>
-        </div>
-        ` : ''}
-      `,
-      showConfirmButton: false,
-      showCloseButton: true,
-      buttonsStyling: false,
-      customClass: {
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      },
-      width: 900,
-      didOpen: () => {
-        // Add event listeners to action buttons
-        document.querySelector('[data-action="add-activity"]')?.addEventListener('click', () => {
-          Swal.close();
-          handleAddActivity(contact);
-        });
-        document.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
-          Swal.close();
-          handleEditContact(contact);
-        });
-        document.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
-          Swal.close();
-          handleDeleteContact(contact);
-        });
-      },
-    });
-  };
-
-  const handleAddActivity = async (contact: Contact) => {
-    if (typeof Swal === 'undefined') return;
-
-    try {
-      // Fetch deals and team members for dropdowns
-      const [deals, teamMembers] = await Promise.all([
-        dealsService.getAll(),
+      const [membersData, dealsData] = await Promise.all([
         teamMemberService.getAll(),
+        dealsService.getAll()
       ]);
-
-      // Create current date
-      const currentDate = new Date();
-
-      const { value: formValues } = await Swal.fire({
-        title: `<div class="d-flex align-items-center">
-          <i class="ki-duotone ki-calendar-add fs-2x text-primary me-3">
-            <span class="path1"></span>
-            <span class="path2"></span>
-            <span class="path3"></span>
-            <span class="path4"></span>
-            <span class="path5"></span>
-            <span class="path6"></span>
-          </i>
-          <span>Add Activity for ${contact.fields['Name'] || 'Contact'}</span>
-        </div>`,
-        html: `
-          <div class="text-start p-4">
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-note-2 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Activity
-              </label>
-              <input
-                id="activity"
-                class="form-control form-control-solid"
-                placeholder="Enter activity description"
-                required
-              />
-            </div>
-            <div class="mb-5">
-              <label class="form-label required fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-abstract-26 fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Activity Type
-              </label>
-              <select id="activityType" class="form-select form-select-solid">
-                <option value="">Select type...</option>
-                <option value="Meeting">📅 Meeting</option>
-                <option value="Phone Call">📞 Phone Call</option>
-                <option value="Call Summary">📝 Call Summary</option>
-                <option value="WhatsApp Chat">💬 WhatsApp Chat</option>
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-check-circle fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Status
-              </label>
-              <select id="activityStatus" class="form-select form-select-solid">
-                <option value="Open" selected>Open</option>
-                <option value="Done">Done</option>
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-double-check fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                  <span class="path5"></span>
-                  <span class="path6"></span>
-                </i>
-                Related Deals
-              </label>
-              <select id="relatedDeals" class="form-select form-select-solid">
-                <option value="">Select deal...</option>
-                ${deals.map((deal: Deal) =>
-                  `<option value="${deal.id}">${deal.fields['Deal Name']} ${deal.fields['Amount'] ? `- $${deal.fields['Amount']}` : ''}</option>`
-                ).join('')}
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-user-tick fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Owner
-              </label>
-              <select id="owner" class="form-select form-select-solid">
-                <option value="">Select owner...</option>
-                ${teamMembers.map((member: TeamMember) =>
-                  `<option value="${member.id}">${member.fields['Name']}</option>`
-                ).join('')}
-              </select>
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-calendar fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Created on
-              </label>
-              <input
-                id="createdOn"
-                type="date"
-                class="form-control form-control-solid"
-                value="${currentDate.toISOString().split('T')[0]}"
-              />
-            </div>
-            <div class="mb-5">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-text-align-left fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Activity Summary
-              </label>
-              <textarea
-                id="activitySummary"
-                class="form-control form-control-solid"
-                rows="4"
-                placeholder="Enter additional details..."
-              ></textarea>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Add Activity',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 700,
-        preConfirm: () => {
-          const activity = (document.getElementById('activity') as HTMLInputElement).value;
-          const activityType = (document.getElementById('activityType') as HTMLSelectElement).value;
-          const activitySummary = (document.getElementById('activitySummary') as HTMLTextAreaElement).value;
-          const activityStatus = (document.getElementById('activityStatus') as HTMLSelectElement).value;
-          const relatedDeals = (document.getElementById('relatedDeals') as HTMLSelectElement).value;
-          const owner = (document.getElementById('owner') as HTMLSelectElement).value;
-          const createdOn = (document.getElementById('createdOn') as HTMLInputElement).value;
-
-          if (!activity) {
-            Swal.showValidationMessage('Activity description is required');
-            return false;
-          }
-
-          if (!activityType) {
-            Swal.showValidationMessage('Activity type is required');
-            return false;
-          }
-
-          return {
-            activity,
-            activityType,
-            activitySummary,
-            activityStatus,
-            relatedDeals,
-            owner,
-            createdOn
-          };
-        },
-      });
-
-      if (formValues) {
-        // Generate activity number
-        const activityNumber = `ACT-${Date.now()}`;
-
-        // Build activity data object with proper typing
-        const activityData: Partial<Activity['fields']> & { 'Activity Number': string } = {
-          'Activity Number': activityNumber,
-          'Activity': formValues.activity,
-          'Activity Type': formValues.activityType as 'Meeting' | 'Phone Call' | 'Call Summary' | 'WhatsApp Chat',
-          'Status': formValues.activityStatus as 'Open' | 'Done',
-          'Contact 2': [contact.id],
-        };
-
-        // Add optional fields only if they have values
-        if (formValues.activitySummary) {
-          activityData['Activity Summary (Activity)'] = formValues.activitySummary;
-        }
-
-        if (formValues.relatedDeals) {
-          activityData['Related Deals'] = [formValues.relatedDeals];
-        }
-
-        if (formValues.owner) {
-          activityData['Owner'] = [formValues.owner];
-        }
-
-        if (formValues.createdOn) {
-          // Parse the date and convert to ISO format for Airtable
-          try {
-            const parsedDate = new Date(formValues.createdOn);
-            if (!isNaN(parsedDate.getTime())) {
-              activityData['Start time'] = parsedDate.toISOString();
-            }
-          } catch (e) {
-            console.warn('Could not parse date:', e);
-          }
-        }
-
-        await activityService.create(activityData as Activity['fields']);
-
-        await Swal.fire('Added!', 'Activity has been added successfully.', 'success');
-      }
-    } catch (error) {
-      Swal.fire('Error', 'Failed to add activity', 'error');
-      console.error(error);
+      setTeamMembers(membersData);
+      setDeals(dealsData);
+    } catch (err) {
+      console.error('Failed to load dependencies', err);
     }
   };
 
-  const handleEditContact = async (contact: Contact) => {
-    if (typeof Swal === 'undefined') return;
+  // --- Handlers ---
 
-    const { value: formValues } = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-pencil fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-        </i>
-        <span>Edit Contact</span>
-      </div>`,
-      html: `
-        <div class="text-start p-4">
-          <div class="mb-5">
-            <label class="form-label required fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-phone fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Phone Number
-            </label>
-            <input
-              id="phone"
-              class="form-control form-control-solid"
-              value="${contact.fields['Phone']}"
-              placeholder="Enter phone number"
-              required
-            />
-          </div>
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-profile-circle fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-              </i>
-              Name
-            </label>
-            <input
-              id="name"
-              class="form-control form-control-solid"
-              value="${contact.fields['Name'] || ''}"
-              placeholder="Enter name"
-            />
-          </div>
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-sms fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              class="form-control form-control-solid"
-              value="${contact.fields['Email'] || ''}"
-              placeholder="Enter email address"
-            />
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Update Contact',
-      cancelButtonText: 'Cancel',
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: 'btn btn-primary',
-        cancelButton: 'btn btn-light me-3',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      },
-      width: 600,
-      preConfirm: () => {
-        const phone = (document.getElementById('phone') as HTMLInputElement).value;
-        const name = (document.getElementById('name') as HTMLInputElement).value;
-        const email = (document.getElementById('email') as HTMLInputElement).value;
+  const openCreateModal = () => {
+    setFormData({ phone: '', name: '', email: '', createdBy: '' });
+    setIsCreateModalOpen(true);
+  };
 
-        if (!phone) {
-          Swal.showValidationMessage('Phone number is required');
-          return false;
-        }
+  const handleCreateSubmit = async () => {
+    if (!formData.phone) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Phone number is required' });
+      return;
+    }
 
-        return { phone, name, email };
-      },
+    try {
+      const contactData: Partial<Contact['fields']> & { Phone: string } = {
+        Phone: formData.phone,
+      };
+
+      if (formData.name) contactData.Name = formData.name;
+      if (formData.email) contactData.Email = formData.email;
+      if (formData.createdBy) contactData['Created by'] = [formData.createdBy];
+
+      await contactService.create(contactData as Contact['fields']);
+      Swal.fire('Created!', 'Contact has been created successfully.', 'success');
+      loadContacts();
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      Swal.fire('Error', 'Failed to create contact', 'error');
+    }
+  };
+
+  const openViewModal = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsViewModalOpen(true);
+  };
+
+  const openEditModal = (contact: Contact) => {
+    setSelectedContact(contact);
+    setFormData({
+      phone: contact.fields['Phone'] || '',
+      name: contact.fields['Name'] || '',
+      email: contact.fields['Email'] || ''
     });
+    setIsViewModalOpen(false);
+    setIsEditModalOpen(true);
+  };
 
-    if (formValues) {
-      try {
-        await contactService.update(contact.id, {
-          Phone: formValues.phone,
-          Name: formValues.name || undefined,
-          Email: formValues.email || undefined,
-        });
+  const handleEditSubmit = async () => {
+    if (!selectedContact) return;
+    if (!formData.phone) {
+      Swal.fire('Error', 'Phone number is required', 'error');
+      return;
+    }
 
-        await Swal.fire('Updated!', 'Contact has been updated successfully.', 'success');
-        loadContacts();
-      } catch (error) {
-        Swal.fire('Error', 'Failed to update contact', 'error');
-        console.error(error);
-      }
+    try {
+      await contactService.update(selectedContact.id, {
+        Phone: formData.phone,
+        Name: formData.name || undefined,
+        Email: formData.email || undefined,
+      });
+
+      Swal.fire('Updated!', 'Contact has been updated successfully.', 'success');
+      loadContacts();
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      Swal.fire('Error', 'Failed to update contact', 'error');
     }
   };
 
   const handleDeleteContact = async (contact: Contact) => {
-    if (typeof Swal === 'undefined') return;
+    setIsViewModalOpen(false);
 
     const result = await Swal.fire({
       title: 'Are you sure?',
-      html: `Do you want to delete contact <strong>${contact.fields['Name'] || contact.fields['Phone']}</strong>?<br/><br/>This action cannot be undone.`,
+      html: `Do you want to delete contact <strong>${contact.fields['Name'] || contact.fields['Phone']}</strong>?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, delete it!',
@@ -624,14 +146,70 @@ export default function ContactsList() {
     if (result.isConfirmed) {
       try {
         await contactService.delete(contact.id);
-        await Swal.fire('Deleted!', 'Contact has been deleted successfully.', 'success');
+        Swal.fire('Deleted!', 'Contact has been deleted.', 'success');
         loadContacts();
       } catch (error) {
-        Swal.fire('Error', 'Failed to delete contact', 'error');
         console.error(error);
+        Swal.fire('Error', 'Failed to delete contact', 'error');
       }
     }
   };
+
+  const openActivityModal = (contact: Contact) => {
+    setSelectedContact(contact);
+    setFormData({
+      activity: '',
+      activityType: '',
+      activitySummary: '',
+      activityStatus: 'Open',
+      relatedDeals: '',
+      owner: '',
+      createdOn: new Date().toISOString().split('T')[0]
+    });
+    setIsViewModalOpen(false);
+    setIsActivityModalOpen(true);
+  };
+
+  const handleActivitySubmit = async () => {
+    if (!selectedContact) return;
+    if (!formData.activity || !formData.activityType) {
+      Swal.fire('Error', 'Activity description and type are required', 'error');
+      return;
+    }
+
+    try {
+      const activityNumber = `ACT-${Date.now()}`;
+      const activityData: Partial<Activity['fields']> & { 'Activity Number': string } = {
+        'Activity Number': activityNumber,
+        'Activity': formData.activity,
+        'Activity Type': formData.activityType,
+        'Status': formData.activityStatus,
+        'Contact 2': [selectedContact.id],
+      };
+
+      if (formData.activitySummary) activityData['Activity Summary (Activity)'] = formData.activitySummary;
+      if (formData.relatedDeals) activityData['Related Deals'] = [formData.relatedDeals];
+      if (formData.owner) activityData['Owner'] = [formData.owner];
+      if (formData.createdOn) {
+        try {
+          const parsedDate = new Date(formData.createdOn);
+          if (!isNaN(parsedDate.getTime())) {
+            activityData['Start time'] = parsedDate.toISOString();
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+
+      await activityService.create(activityData as Activity['fields']);
+      Swal.fire('Added!', 'Activity has been added successfully.', 'success');
+      setIsActivityModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      Swal.fire('Error', 'Failed to add activity', 'error');
+    }
+  };
+
 
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch = searchTerm === '' ||
@@ -678,141 +256,509 @@ export default function ContactsList() {
   }
 
   return (
-    <div className="card">
-      <div className="card-header border-0 pt-6">
-        <div className="card-title">
-          <div className="d-flex align-items-center position-relative my-1">
-            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-              <span className="path1"></span>
-              <span className="path2"></span>
-            </i>
-            <input
-              type="text"
-              className="form-control form-control-solid w-250px ps-13"
-              placeholder="Search contacts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="card-toolbar">
-          <div className="d-flex justify-content-end align-items-center gap-3">
-            <select
-              className="form-select form-select-solid w-200px"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="New Lead">New Lead</option>
-              <option value="Attempted to Contact">Attempted to Contact</option>
-              <option value="Contacted">Contacted</option>
-              <option value="Qualified">Qualified</option>
-              <option value="Unqualified">Unqualified</option>
-            </select>
-
-            <button className="btn btn-light" onClick={loadContacts}>
-              <i className="ki-duotone ki-arrows-circle fs-2">
+    <>
+      <div className="card">
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <div className="d-flex align-items-center position-relative my-1">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
                 <span className="path1"></span>
                 <span className="path2"></span>
               </i>
-              Refresh
-            </button>
+              <input
+                type="text"
+                className="form-control form-control-solid w-250px ps-13"
+                placeholder="Search contacts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
 
-            <button className="btn btn-primary" onClick={handleCreateContact}>
-              <i className="ki-duotone ki-plus fs-2"></i>
-              Create Contact
-            </button>
+          <div className="card-toolbar">
+            <div className="d-flex justify-content-end align-items-center gap-3">
+              <select
+                className="form-select form-select-solid w-200px"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="New Lead">New Lead</option>
+                <option value="Attempted to Contact">Attempted to Contact</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Unqualified">Unqualified</option>
+              </select>
+
+              <button className="btn btn-light" onClick={loadContacts}>
+                <i className="ki-duotone ki-arrows-circle fs-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                </i>
+                Refresh
+              </button>
+
+              <button className="btn btn-primary" onClick={openCreateModal}>
+                <i className="ki-duotone ki-plus fs-2"></i>
+                Create Contact
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="card-body py-4">
-        <div className="table-responsive">
-          <table className="table table-row-dashed table-row-gray-300 align-middle gs-0 gy-4">
-            <thead>
-              <tr className="fw-bold text-muted">
-                <th className="min-w-100px">Contact ID</th>
-                <th className="min-w-150px">Name</th>
-                <th className="min-w-150px">Email</th>
-                <th className="min-w-120px">Phone</th>
-                <th className="min-w-150px">Lead Status</th>
-                <th className="min-w-120px">Created On</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredContacts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10">
-                    <div className="text-gray-600">No contacts found</div>
-                  </td>
+        <div className="card-body py-4">
+          <div className="table-responsive">
+            <table className="table table-row-dashed table-row-gray-300 align-middle gs-0 gy-4">
+              <thead>
+                <tr className="fw-bold text-muted">
+                  <th className="min-w-100px">Contact ID</th>
+                  <th className="min-w-150px">Name</th>
+                  <th className="min-w-150px">Email</th>
+                  <th className="min-w-120px">Phone</th>
+                  <th className="min-w-150px">Lead Status</th>
+                  <th className="min-w-120px">Created On</th>
                 </tr>
-              ) : (
-                filteredContacts.map((contact) => (
-                  <tr
-                    key={contact.id}
-                    onClick={() => handleContactClick(contact)}
-                    style={{ cursor: 'pointer' }}
-                    className="hover-bg-light-primary"
-                  >
-                    <td>
-                      <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                        {contact.fields['Contact ID'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <div className="symbol symbol-45px me-5">
-                          <div className="symbol-label fs-3 bg-light-primary text-primary">
-                            {contact.fields['Name']?.[0]?.toUpperCase() || '?'}
-                          </div>
-                        </div>
-                        <div className="d-flex justify-content-start flex-column">
-                          <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                            {contact.fields['Name'] || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-gray-900 fw-bold d-block fs-6">
-                        {contact.fields['Email'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="text-gray-900 fw-bold d-block fs-6">
-                        {contact.fields['Phone'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="d-flex flex-wrap gap-1">
-                        {Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].map((status, index) => (
-                          <span key={index} className={`badge ${getStatusBadgeClass(status)}`}>
-                            {status}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-gray-600">
-                        {contact.fields['Created on']
-                          ? new Date(contact.fields['Created on']).toLocaleDateString()
-                          : 'N/A'}
-                      </span>
+              </thead>
+              <tbody>
+                {filteredContacts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-10">
+                      <div className="text-gray-600">No contacts found</div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="d-flex justify-content-between align-items-center mt-5">
-          <div className="text-gray-600">
-            Showing {filteredContacts.length} of {contacts.length} contacts
+                ) : (
+                  filteredContacts.map((contact) => (
+                    <tr
+                      key={contact.id}
+                      onClick={() => openViewModal(contact)}
+                      style={{ cursor: 'pointer' }}
+                      className="hover-bg-light-primary"
+                    >
+                      <td>
+                        <span className="text-gray-900 fw-bold text-hover-primary fs-6">
+                          {contact.fields['Contact ID'] || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <div className="symbol symbol-45px me-5">
+                            <div className="symbol-label fs-3 bg-light-primary text-primary">
+                              {contact.fields['Name']?.[0]?.toUpperCase() || '?'}
+                            </div>
+                          </div>
+                          <div className="d-flex justify-content-start flex-column">
+                            <span className="text-gray-900 fw-bold text-hover-primary fs-6">
+                              {contact.fields['Name'] || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="text-gray-900 fw-bold d-block fs-6">
+                          {contact.fields['Email'] || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-gray-900 fw-bold d-block fs-6">
+                          {contact.fields['Phone'] || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex flex-wrap gap-1">
+                          {Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].map((status, index) => (
+                            <span key={index} className={`badge ${getStatusBadgeClass(status)}`}>
+                              {status}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span className="text-gray-600">
+                          {contact.fields['Created on']
+                            ? new Date(contact.fields['Created on']).toLocaleDateString()
+                            : 'N/A'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Create Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Contact"
+        footer={
+          <>
+            <button type="button" className="btn btn-light me-3" onClick={() => setIsCreateModalOpen(false)}>Close</button>
+            <button type="button" className="btn btn-primary" onClick={handleCreateSubmit}>Create Contact</button>
+          </>
+        }
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required">
+            <i className="ki-duotone ki-phone fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Phone Number
+          </label>
+          <input
+            type="text"
+            className="form-control form-control-solid"
+            placeholder="Enter phone number"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">
+            <i className="ki-duotone ki-profile-circle fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+            </i>
+            Full Name
+          </label>
+          <input
+            type="text"
+            className="form-control form-control-solid"
+            placeholder="Enter full name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">
+            <i className="ki-duotone ki-sms fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Email Address
+          </label>
+          <input
+            type="email"
+            className="form-control form-control-solid"
+            placeholder="Enter email address"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">
+            <i className="ki-duotone ki-user-tick fs-5 me-1">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+            </i>
+            Created By
+          </label>
+          <select
+            className="form-select form-select-solid"
+            value={formData.createdBy}
+            onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
+          >
+            <option value="">Select creator...</option>
+            {teamMembers.map(member => (
+              <option key={member.id} value={member.id}>{member.fields['Name']}</option>
+            ))}
+          </select>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={
+          <div className="d-flex align-items-center">
+            <i className="ki-duotone ki-pencil fs-2 text-primary me-3">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            <span>Edit Contact</span>
+          </div>
+        }
+        footer={
+          <>
+            <button type="button" className="btn btn-light me-3" onClick={() => setIsEditModalOpen(false)}>Close</button>
+            <button type="button" className="btn btn-primary" onClick={handleEditSubmit}>Update Contact</button>
+          </>
+        }
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required">Phone Number</label>
+          <input
+            type="text"
+            className="form-control form-control-solid"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Full Name</label>
+          <input
+            type="text"
+            className="form-control form-control-solid"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label">Email Address</label>
+          <input
+            type="email"
+            className="form-control form-control-solid"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+        </div>
+      </Modal>
+
+      {/* View Modal */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title={selectedContact?.fields['Name'] || 'Contact Details'}
+        size="lg"
+      >
+        {selectedContact && (
+          <>
+            {/* Action Buttons */}
+            <div className="d-flex justify-content-end mb-5">
+              <button className="btn btn-primary me-2" onClick={() => openActivityModal(selectedContact)}>
+                <i className="ki-duotone ki-calendar-add fs-2">
+                  <span className="path1"></span><span className="path2"></span><span className="path3"></span><span className="path4"></span>
+                </i>
+                Add Activity
+              </button>
+              <button className="btn btn-light me-2" onClick={() => openEditModal(selectedContact)}>
+                <i className="ki-duotone ki-pencil fs-2"><span className="path1"></span><span className="path2"></span></i>
+                Edit
+              </button>
+              <button className="btn btn-secondary" onClick={() => handleDeleteContact(selectedContact)}>
+                <i className="ki-duotone ki-trash fs-2"><span className="path1"></span><span className="path2"></span><span className="path3"></span></i>
+                Delete
+              </button>
+            </div>
+
+            {/* Contact Info */}
+            <div className="mb-5">
+              <h4 className="border-bottom pb-2 mb-4">
+                <i className="ki-duotone ki-profile-circle fs-2 me-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                  <span className="path3"></span>
+                </i>
+                Contact Information
+              </h4>
+              <div className="row g-5">
+                <div className="col-md-6">
+                  <label className="fw-bold text-muted d-block mb-1">Contact ID</label>
+                  <span className="fw-bolder fs-6 text-gray-800">{selectedContact.fields['Contact ID'] || 'N/A'}</span>
+                </div>
+                <div className="col-md-6">
+                  <label className="fw-bold text-muted d-block mb-1">Phone Number</label>
+                  <span className="fw-bolder fs-6 text-gray-800">{selectedContact.fields['Phone'] || 'N/A'}</span>
+                </div>
+                <div className="col-md-6">
+                  <label className="fw-bold text-muted d-block mb-1">Email Address</label>
+                  <span className="fw-bolder fs-6 text-gray-800">{selectedContact.fields['Email'] || 'N/A'}</span>
+                </div>
+                <div className="col-md-6">
+                  <label className="fw-bold text-muted d-block mb-1">Created On</label>
+                  <span className="fw-bolder fs-6 text-gray-800">
+                    {selectedContact.fields['Created on'] ? new Date(selectedContact.fields['Created on']).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Lead Status */}
+            {selectedContact.fields['Lead Status'] && (
+              <div className="mb-0">
+                <h4 className="border-bottom pb-2 mb-4">
+                  <i className="ki-duotone ki-chart-simple fs-2 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                    <span className="path4"></span>
+                  </i>
+                  Lead Status
+                </h4>
+                <div>
+                  {Array.isArray(selectedContact.fields['Lead Status']) && selectedContact.fields['Lead Status'].map((status, i) => (
+                    <span key={i} className={`badge badge-primary me-2 mb-2 fs-7`}>{status}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
+
+      {/* Add Activity Modal */}
+      <Modal
+        isOpen={isActivityModalOpen}
+        onClose={() => setIsActivityModalOpen(false)}
+        title={
+          <div className="d-flex align-items-center">
+            <i className="ki-duotone ki-calendar-add fs-2 text-primary me-3">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+              <span className="path4"></span>
+              <span className="path5"></span>
+              <span className="path6"></span>
+            </i>
+            <span>Add Activity for {selectedContact?.fields['Name'] || 'Contact'}</span>
+          </div>
+        }
+        footer={
+          <>
+            <button type="button" className="btn btn-light me-3" onClick={() => setIsActivityModalOpen(false)}>Close</button>
+            <button type="button" className="btn btn-primary" onClick={handleActivitySubmit}>Add Activity</button>
+          </>
+        }
+        size="lg"
+      >
+        <div className="fv-row mb-5">
+          <label className="form-label required fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-note-2 fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+              <span className="path4"></span>
+            </i>
+            Activity
+          </label>
+          <input
+            className="form-control form-control-solid"
+            placeholder="Enter activity description"
+            value={formData.activity}
+            onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label required fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-abstract-26 fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Activity Type
+          </label>
+          <select
+            className="form-select form-select-solid"
+            value={formData.activityType}
+            onChange={(e) => setFormData({ ...formData, activityType: e.target.value })}
+          >
+            <option value="">Select type...</option>
+            <option value="Meeting">📅 Meeting</option>
+            <option value="Phone Call">📞 Phone Call</option>
+            <option value="Call Summary">📝 Call Summary</option>
+            <option value="WhatsApp Chat">💬 WhatsApp Chat</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-check-circle fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Status
+          </label>
+          <select
+            className="form-select form-select-solid"
+            value={formData.activityStatus}
+            onChange={(e) => setFormData({ ...formData, activityStatus: e.target.value })}
+          >
+            <option value="Open">Open</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-double-check fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+              <span className="path4"></span>
+              <span className="path5"></span>
+              <span className="path6"></span>
+            </i>
+            Related Deals
+          </label>
+          <select
+            className="form-select form-select-solid"
+            value={formData.relatedDeals}
+            onChange={(e) => setFormData({ ...formData, relatedDeals: e.target.value })}
+          >
+            <option value="">Select deal...</option>
+            {deals.map(deal => (
+              <option key={deal.id} value={deal.id}>
+                {deal.fields['Deal Name']} {deal.fields['Amount'] ? `- $${deal.fields['Amount']}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-user-tick fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+            </i>
+            Owner
+          </label>
+          <select
+            className="form-select form-select-solid"
+            value={formData.owner}
+            onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
+          >
+            <option value="">Select owner...</option>
+            {teamMembers.map(member => (
+              <option key={member.id} value={member.id}>{member.fields['Name']}</option>
+            ))}
+          </select>
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-calendar fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            Created on
+          </label>
+          <input
+            type="date"
+            className="form-control form-control-solid"
+            value={formData.createdOn}
+            onChange={(e) => setFormData({ ...formData, createdOn: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-text-align-left fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+              <span className="path4"></span>
+            </i>
+            Activity Summary
+          </label>
+          <textarea
+            className="form-control form-control-solid"
+            rows={4}
+            value={formData.activitySummary}
+            onChange={(e) => setFormData({ ...formData, activitySummary: e.target.value })}
+          ></textarea>
+        </div>
+      </Modal>
+    </>
   );
 }

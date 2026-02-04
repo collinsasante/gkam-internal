@@ -6,6 +6,8 @@ import App from "./App";
 // Import Metronic CSS
 import "./assets/plugins/global/plugins.bundle.css";
 import "./assets/css/style.bundle.css";
+import "./assets/css/custom-tweaks.css";
+
 
 // Import custom color overrides
 import "./index.css";
