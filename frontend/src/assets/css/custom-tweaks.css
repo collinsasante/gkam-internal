@@ -86,12 +86,12 @@
   color: #ffffff !important;
 }
 
-.menu-item.here > .menu-link {
+.menu-item.here>.menu-link {
   background-color: transparent !important;
 }
 
-.menu-item.here > .menu-link .menu-title,
-.menu-item.here > .menu-link .menu-icon i {
+.menu-item.here>.menu-link .menu-title,
+.menu-item.here>.menu-link .menu-icon i {
   color: #ffffff !important;
 }
 
@@ -207,6 +207,7 @@ body.app-sidebar-minimize .app-wrapper {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -221,6 +222,7 @@ body.app-sidebar-minimize .app-wrapper {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -305,10 +307,13 @@ body.app-sidebar-minimize .app-wrapper {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
+
   50% {
     transform: scale(1.1);
     opacity: 0.8;
@@ -336,9 +341,12 @@ body.app-sidebar-minimize .app-wrapper {
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -412,22 +420,26 @@ body.app-sidebar-minimize .app-wrapper {
 .app-sidebar-wrapper,
 .app-sidebar-logo,
 .app-sidebar-footer {
-  background-color: #2b2b2b !important; /* Grey Background */
+  background-color: #2b2b2b !important;
+  /* Grey Background */
 }
 
 /* Sidebar Text Color (Menu Items) */
 .app-sidebar-menu .menu-item .menu-link .menu-title {
-  color: #ffffff !important; /* White Text */
+  color: #ffffff !important;
+  /* White Text */
 }
 
 /* Sidebar Icons Color */
 .app-sidebar-menu .menu-item .menu-link .menu-icon i {
-  color: #ffffff !important; /* White Icons */
+  color: #ffffff !important;
+  /* White Icons */
 }
 
 /* Sidebar Menu Item Hover */
 .app-sidebar-menu .menu-item .menu-link:hover {
-  background-color: #444444 !important; /* Dark Grey when hovered */
+  background-color: #444444 !important;
+  /* Dark Grey when hovered */
 }
 
 /* Ensure Logo text is not hidden if any (logo is image though) */
@@ -438,4 +450,57 @@ body.app-sidebar-minimize .app-wrapper {
 
 .app-sidebar-footer .text-gray-600 {
   color: #cccccc !important;
+}
+
+/* Mobile Sidebar Fixes */
+@media (max-width: 991.98px) {
+
+  /* Ensure the sidebar overlays correctly when active */
+  .app-sidebar.drawer-on,
+  .app-sidebar.drawer-start-on {
+    transform: translateX(0) !important;
+    z-index: 109 !important;
+    /* Higher than header/overlay */
+  }
+
+  /* Ensure the drawer overlay is visible */
+  .drawer-overlay {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    z-index: 108 !important;
+  }
+}
+
+/* === Missing Utility Classes === */
+.w-35px {
+  width: 35px !important;
+}
+
+.h-35px {
+  height: 35px !important;
+}
+
+.btn-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+}
+
+/* Ensure active color primary works on hover */
+.btn-active-color-primary:hover {
+  color: #DC143C !important;
+}
+
+.btn-active-color-primary:hover i,
+.btn-active-color-primary:hover .svg-icon,
+.btn-active-color-primary:hover .ki-duotone {
+  color: #DC143C !important;
+}
+
+/* Add support for custom color icons inside the button */
+.btn-active-color-primary:hover .ki-duotone.text-gray-500,
+.btn-active-color-primary:hover .ki-duotone.text-gray-600,
+.btn-active-color-primary:hover .ki-duotone.text-gray-700 {
+  color: #DC143C !important;
 }

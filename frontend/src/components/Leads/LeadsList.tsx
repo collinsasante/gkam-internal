@@ -1,20 +1,65 @@
+
 import { useState, useEffect } from 'react';
 import { leadsService, teamMemberService, contactService } from '../../services/airtable.service';
 import type { Lead, TeamMember } from '../../types/airtable.types';
 import SkeletonLoader from '../Common/SkeletonLoader';
+import Modal from '../Common/Modal';
 
 declare const Swal: any;
 
 type LeadStatus = 'New Lead' | 'Attempted to Contact' | 'Contacted' | 'Qualified' | 'Unqualified';
 
 export default function LeadsList() {
-  console.log('✅ LeadsList Component Version: LOCAL-LATEST-KANBAN-REDESIGN-MATCHING-DESIGN-DRAFTS');
+  console.log('✅ LeadsList Component Version: REFACK-MODAL-V1');
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Modal States
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+
+  // Delete Modal State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+
+  const handleDeleteClick = (leadId: string) => {
+    setLeadToDelete(leadId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (leadToDelete) {
+      try {
+        await leadsService.delete(leadToDelete);
+        loadData();
+        setShowDeleteConfirm(false);
+        setLeadToDelete(null);
+        if (typeof Swal !== 'undefined') {
+          Swal.fire('Deleted!', 'Lead has been deleted.', 'success');
+        }
+      } catch (error) {
+        console.error(error);
+        if (typeof Swal !== 'undefined') {
+          Swal.fire('Error', 'Failed to delete lead', 'error');
+        }
+      }
+    }
+  };
+
+  // Edit Form State
+  const [editForm, setEditForm] = useState({
+    company: '',
+    email: '',
+    phone: '',
+    title: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -82,292 +127,21 @@ export default function LeadsList() {
     }
   };
 
-  const handleCardClick = async (lead: Lead) => {
-    if (typeof Swal === 'undefined') return;
-
-    const result = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-profile-user fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-          <span class="path3"></span>
-          <span class="path4"></span>
-        </i>
-        <span>${Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0 ? lead.fields['Contact'][0] : 'Lead Details'}</span>
-      </div>`,
-      html: `
-        <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-          <!-- Contact Information -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-primary">
-              <h6 class="card-title mb-0 text-primary">
-                <i class="ki-duotone ki-profile-circle fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Contact Information
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Company</label>
-                  <div class="text-gray-800 fw-bold">${lead.fields['Company'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Title</label>
-                  <div class="text-gray-800">${lead.fields['Title'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Email</label>
-                  <div class="text-gray-800">${lead.fields['Email'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Phone</label>
-                  <div class="text-gray-800">${lead.fields['Phone'] || 'N/A'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Lead Status & Assignment -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-info">
-              <h6 class="card-title mb-0 text-info">
-                <i class="ki-duotone ki-status fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Status & Assignment
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Status</label>
-                  <div>
-                    <span class="badge badge-light-primary fs-7">${lead.fields['Status'] || 'N/A'}</span>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Owner</label>
-                  <div class="text-gray-800">${getOwnerName(lead.fields['Owner'])}</div>
-                </div>
-                ${lead.fields['Last Interaction'] ? `
-                  <div class="col-12">
-                    <label class="text-muted fs-7 fw-semibold">Last Interaction</label>
-                    <div class="text-gray-800">${new Date(lead.fields['Last Interaction']).toLocaleDateString()}</div>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-
-          <!-- Activity Summary -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-success">
-              <h6 class="card-title mb-0 text-success">
-                <i class="ki-duotone ki-chart-simple fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Activity Summary
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Activities</label>
-                  <div class="text-gray-800 fw-bold fs-4">${Array.isArray(lead.fields['Activities']) ? lead.fields['Activities'].length : 0}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Deals</label>
-                  <div class="text-gray-800 fw-bold fs-4">${Array.isArray(lead.fields['Deals']) ? lead.fields['Deals'].length : 0}</div>
-                </div>
-                ${lead.fields['Created on'] ? `
-                  <div class="col-12">
-                    <label class="text-muted fs-7 fw-semibold">Created On</label>
-                    <div class="text-gray-800">${new Date(lead.fields['Created on']).toLocaleDateString()}</div>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      showDenyButton: true,
-      confirmButtonText: '<i class="ki-duotone ki-pencil fs-2"></i> Edit',
-      denyButtonText: '<i class="ki-duotone ki-trash fs-2"></i> Delete',
-      cancelButtonText: 'Close',
-      denyButtonColor: '#f1416c',
-      width: 900,
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: 'btn btn-primary',
-        denyButton: 'btn btn-danger',
-        cancelButton: 'btn btn-light me-3',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      }
-    });
-
-    if (result.isConfirmed) {
-      // Edit (confirm button)
-      handleEditLead(lead);
-    } else if (result.isDenied) {
-      // Delete (deny button)
-      handleDeleteLead(lead);
-    }
-    // else: Close (cancel button) - do nothing
+  const handleCardClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsDetailsModalOpen(true);
   };
 
-  const handleEditLead = async (lead: Lead) => {
-    if (typeof Swal === 'undefined') return;
-
-    const { value: formValues } = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-pencil fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-        </i>
-        <span>Edit Lead</span>
-      </div>`,
-      html: `
-        <div class="text-start p-4">
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-abstract-21 fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Company
-            </label>
-            <input
-              id="company"
-              class="form-control form-control-solid"
-              value="${lead.fields['Company'] || ''}"
-              placeholder="Enter company name"
-            >
-          </div>
-
-          <div class="row g-3 mb-5">
-            <div class="col-6">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-sms fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                class="form-control form-control-solid"
-                value="${lead.fields['Email'] || ''}"
-                placeholder="email@example.com"
-              >
-            </div>
-            <div class="col-6">
-              <label class="form-label fw-bold fs-6 mb-2">
-                <i class="ki-duotone ki-phone fs-4 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Phone
-              </label>
-              <input
-                id="phone"
-                class="form-control form-control-solid"
-                value="${lead.fields['Phone'] || ''}"
-                placeholder="+234 XXX XXX XXXX"
-              >
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-badge fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-                <span class="path4"></span>
-                <span class="path5"></span>
-              </i>
-              Job Title
-            </label>
-            <input
-              id="title"
-              class="form-control form-control-solid"
-              value="${lead.fields['Title'] || ''}"
-              placeholder="Enter job title"
-            >
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: '<i class="ki-duotone ki-check fs-2"></i> Update Lead',
-      cancelButtonText: '<i class="ki-duotone ki-cross fs-2"></i> Cancel',
-      width: 700,
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: 'btn btn-primary',
-        cancelButton: 'btn btn-light me-3',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      },
-      preConfirm: () => {
-        const company = (document.getElementById('company') as HTMLInputElement).value;
-        const email = (document.getElementById('email') as HTMLInputElement).value;
-        const phone = (document.getElementById('phone') as HTMLInputElement).value;
-        const title = (document.getElementById('title') as HTMLInputElement).value;
-
-        return { company, email, phone, title };
-      },
+  const handleEditClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setEditForm({
+      company: lead.fields['Company'] || '',
+      email: lead.fields['Email'] || '',
+      phone: lead.fields['Phone'] || '',
+      title: lead.fields['Title'] || ''
     });
-
-    if (formValues) {
-      try {
-        const updateData: Partial<Lead['fields']> = {};
-
-        if (formValues.company) updateData.Company = formValues.company;
-        if (formValues.email) updateData.Email = formValues.email;
-        if (formValues.phone) updateData.Phone = formValues.phone;
-        if (formValues.title) updateData.Title = formValues.title;
-
-        await leadsService.update(lead.id, updateData);
-        await Swal.fire({
-          icon: 'success',
-          title: 'Updated!',
-          text: 'Lead has been updated successfully.',
-          confirmButtonText: 'OK',
-          buttonsStyling: false,
-          customClass: {
-            confirmButton: 'btn btn-success'
-          }
-        });
-        loadData();
-      } catch (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to update lead. Please try again.',
-          confirmButtonText: 'OK',
-          buttonsStyling: false,
-          customClass: {
-            confirmButton: 'btn btn-danger'
-          }
-        });
-        console.error(error);
-      }
-    }
+    setIsEditModalOpen(true);
+    setIsDetailsModalOpen(false); // Close details if open
   };
 
   const handleDeleteLead = async (lead: Lead) => {
@@ -379,7 +153,7 @@ export default function LeadsList() {
 
     const result = await Swal.fire({
       title: 'Are you sure?',
-      html: `Do you want to delete <strong>${contactName}</strong>?<br/><br/>This action cannot be undone.`,
+      html: `Do you want to delete <strong>${contactName}</strong> ?<br/><br/>This action cannot be undone.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, delete it!',
@@ -391,6 +165,7 @@ export default function LeadsList() {
       try {
         await leadsService.delete(lead.id);
         await Swal.fire('Deleted!', 'Lead has been deleted successfully.', 'success');
+        setIsDetailsModalOpen(false); // Close details modal if open
         loadData();
       } catch (error) {
         Swal.fire('Error', 'Failed to delete lead', 'error');
@@ -399,12 +174,48 @@ export default function LeadsList() {
     }
   };
 
-  const handleViewContact = async (lead: Lead) => {
-    if (typeof Swal === 'undefined') return;
+  const handleSaveEdit = async () => {
+    if (!selectedLead) return;
 
+    try {
+      const updateData: Partial<Lead['fields']> = {
+        Company: editForm.company,
+        Email: editForm.email,
+        Phone: editForm.phone,
+        Title: editForm.title
+      };
+
+      await leadsService.update(selectedLead.id, updateData);
+
+      // Update local state
+      const updatedLead = { ...selectedLead, fields: { ...selectedLead.fields, ...updateData } };
+      setLeads(leads.map(l => l.id === selectedLead.id ? updatedLead : l));
+      setSelectedLead(updatedLead);
+
+      setIsEditModalOpen(false);
+      setIsDetailsModalOpen(true); // Re-open details
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'success',
+          title: 'Updated!',
+          text: 'Lead has been updated successfully.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      if (typeof Swal !== 'undefined') {
+        Swal.fire('Error', 'Failed to update lead', 'error');
+      }
+    }
+  };
+
+  const handleViewContact = async (lead: Lead) => {
     // Check if lead has a linked contact
     if (!lead.fields['Lead'] || !Array.isArray(lead.fields['Lead']) || lead.fields['Lead'].length === 0) {
-      Swal.fire('No Contact', 'This lead is not linked to a contact record.', 'info');
+      if (typeof Swal !== 'undefined') Swal.fire('No Contact', 'This lead is not linked to a contact record.', 'info');
       return;
     }
 
@@ -412,52 +223,12 @@ export default function LeadsList() {
       // Fetch the linked contact
       const contactId = lead.fields['Lead'][0];
       const contact = await contactService.getById(contactId);
-
-      Swal.fire({
-        title: contact.fields['Name'] || 'Contact Details',
-        html: `
-          <div class="text-start">
-            <p><strong>Phone:</strong> ${contact.fields['Phone'] || 'N/A'}</p>
-            <p><strong>Email:</strong> ${contact.fields['Email'] || 'N/A'}</p>
-            <p><strong>Contact ID:</strong> ${contact.fields['Contact ID'] || 'N/A'}</p>
-            <p><strong>Created:</strong> ${contact.fields['Created on'] ? new Date(contact.fields['Created on']).toLocaleDateString() : 'N/A'}</p>
-            ${contact.fields['Lead Status'] && Array.isArray(contact.fields['Lead Status']) ? `
-              <p><strong>Status:</strong> ${contact.fields['Lead Status'].join(', ')}</p>
-            ` : ''}
-            <p><strong>Activities:</strong> ${Array.isArray(contact.fields['Activities']) ? contact.fields['Activities'].length : 0}</p>
-            <p><strong>Deals:</strong> ${Array.isArray(contact.fields['Deals']) ? contact.fields['Deals'].length : 0}</p>
-          </div>
-        `,
-        width: 600,
-      });
+      setSelectedContact(contact);
+      setIsContactModalOpen(true);
     } catch (error) {
       console.error('Error fetching contact:', error);
-      Swal.fire('Error', 'Failed to load contact details', 'error');
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to load contact details', 'error');
     }
-  };
-
-  const handleViewDetails = (lead: Lead) => {
-    if (typeof Swal === 'undefined') return;
-
-    Swal.fire({
-      title: Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-        ? lead.fields['Contact'][0]
-        : 'Lead Details',
-      html: `
-        <div class="text-start">
-          <p><strong>Company:</strong> ${lead.fields['Company'] || 'N/A'}</p>
-          <p><strong>Email:</strong> ${lead.fields['Email'] || 'N/A'}</p>
-          <p><strong>Phone:</strong> ${lead.fields['Phone'] || 'N/A'}</p>
-          <p><strong>Title:</strong> ${lead.fields['Title'] || 'N/A'}</p>
-          <p><strong>Status:</strong> ${lead.fields['Status'] || 'N/A'}</p>
-          <p><strong>Owner:</strong> ${getOwnerName(lead.fields['Owner'])}</p>
-          <p><strong>Last Interaction:</strong> ${lead.fields['Last Interaction'] ? new Date(lead.fields['Last Interaction']).toLocaleDateString() : 'N/A'}</p>
-          <p><strong>Activities:</strong> ${Array.isArray(lead.fields['Activities']) ? lead.fields['Activities'].length : 0}</p>
-          <p><strong>Deals:</strong> ${Array.isArray(lead.fields['Deals']) ? lead.fields['Deals'].length : 0}</p>
-        </div>
-      `,
-      width: 600,
-    });
   };
 
   const getOwnerName = (ownerIds?: string[]) => {
@@ -534,219 +305,511 @@ export default function LeadsList() {
   }
 
   return (
-    <div className="card">
-      <div className="card-header border-0 pt-6">
-        <div className="card-title">
-          <div className="d-flex align-items-center position-relative my-1">
-            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-              <span className="path1"></span>
-              <span className="path2"></span>
-            </i>
-            <input
-              type="text"
-              className="form-control form-control-solid w-300px ps-13"
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="card-toolbar">
-          <div className="d-flex justify-content-end align-items-center gap-3">
-            <button className="btn btn-sm btn-light" onClick={loadData}>
-              <i className="ki-duotone ki-arrows-circle fs-2">
+    <>
+      <div className="card">
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <div className="d-flex align-items-center position-relative my-1">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
                 <span className="path1"></span>
                 <span className="path2"></span>
               </i>
-              Refresh
-            </button>
+              <input
+                type="text"
+                className="form-control form-control-solid w-300px ps-13"
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="card-toolbar">
+            <div className="d-flex justify-content-end align-items-center gap-3">
+              <button className="btn btn-sm btn-light" onClick={loadData}>
+                <i className="ki-duotone ki-arrows-circle fs-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                </i>
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="card-body py-4">
-        <div className="d-flex gap-5 overflow-auto pb-5" style={{ minHeight: '600px' }}>
-        {columns.map((column) => {
-          const columnLeads = getLeadsByStatus(column.status);
-          return (
-            <div key={column.status} className="flex-shrink-0" style={{ width: '320px' }}>
-              <div className="mb-4">
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <div className="d-flex align-items-center">
-                    <div
-                      className="rounded-circle me-2"
-                      style={{
-                        width: '12px',
-                        height: '12px',
-                        backgroundColor: getColumnColor(column.status),
-                      }}
-                    ></div>
-                    <h3 className="fs-5 fw-bold mb-0">{column.title}</h3>
+        <div className="card-body py-4">
+          <div className="d-flex gap-5 overflow-auto pb-5" style={{ minHeight: '600px' }}>
+            {columns.map((column) => {
+              const columnLeads = getLeadsByStatus(column.status);
+              return (
+                <div key={column.status} className="flex-shrink-0" style={{ width: '320px' }}>
+                  <div className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                      <div className="d-flex align-items-center">
+                        <div
+                          className="rounded-circle me-2"
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            backgroundColor: getColumnColor(column.status),
+                          }}
+                        ></div>
+                        <h3 className="fs-5 fw-bold mb-0">{column.title}</h3>
+                      </div>
+                      <span className="badge badge-light-primary">{columnLeads.length}</span>
+                    </div>
+                    <div className="separator separator-dashed mb-4"></div>
                   </div>
-                  <span className="badge badge-light-primary">{columnLeads.length}</span>
-                </div>
-                <div className="separator separator-dashed mb-4"></div>
-              </div>
 
-              {/* Column Cards */}
-              <div className="d-flex flex-column gap-3">
-                {columnLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="card card-flush cursor-pointer hover-elevate-up"
-                    onClick={() => handleCardClick(lead)}
-                    style={{ transition: 'all 0.2s ease' }}
-                  >
-                    <div className="card-body p-5">
-                      {/* Contact Name */}
-                      <div className="d-flex align-items-center mb-3">
-                        <div className="symbol symbol-40px me-3">
-                          <div className="symbol-label fs-5 fw-bold bg-light-primary text-primary">
-                            {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-                              ? lead.fields['Contact'][0][0]?.toUpperCase()
-                              : '?'}
+                  {/* Column Cards */}
+                  <div className="d-flex flex-column gap-3">
+                    {columnLeads.map((lead) => (
+                      <div
+                        key={lead.id}
+                        className="card card-flush cursor-pointer hover-elevate-up"
+                        onClick={() => handleCardClick(lead)}
+                        style={{ transition: 'all 0.2s ease' }}
+                      >
+                        <div className="card-body p-5">
+                          {/* Contact Name */}
+                          <div className="d-flex align-items-center mb-3">
+                            <div className="symbol symbol-40px me-3">
+                              <div className="symbol-label fs-5 fw-bold bg-light-primary text-primary">
+                                {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
+                                  ? lead.fields['Contact'][0][0]?.toUpperCase()
+                                  : '?'}
+                              </div>
+                            </div>
+                            <div className="flex-grow-1">
+                              <span className="text-gray-900 fw-bold d-block fs-6">
+                                {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
+                                  ? lead.fields['Contact'][0]
+                                  : 'N/A'}
+                              </span>
+                              {lead.fields['Title'] && (
+                                <span className="text-muted fs-7">{lead.fields['Title']}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Company */}
+                          {lead.fields['Company'] && (
+                            <div className="mb-2">
+                              <i className="ki-duotone ki-shop fs-6 text-gray-500 me-2">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                              <span className="text-gray-700 fs-7">{lead.fields['Company']}</span>
+                            </div>
+                          )}
+
+                          {/* Email */}
+                          {lead.fields['Email'] && (
+                            <div className="mb-2">
+                              <i className="ki-duotone ki-sms fs-6 text-gray-500 me-2">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                              <span className="text-gray-700 fs-7">{lead.fields['Email']}</span>
+                            </div>
+                          )}
+
+                          {/* Phone */}
+                          {lead.fields['Phone'] && (
+                            <div className="mb-3">
+                              <i className="ki-duotone ki-phone fs-6 text-gray-500 me-2">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                              <span className="text-gray-700 fs-7">{lead.fields['Phone']}</span>
+                            </div>
+                          )}
+
+                          {/* Owner */}
+                          <div className="d-flex align-items-center justify-content-between mb-3">
+                            <span
+                              className="text-gray-600 fs-7 cursor-pointer text-hover-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAssignOwner(lead.id, lead.fields['Owner']);
+                              }}
+                              title="Click to assign owner"
+                            >
+                              <i className="ki-duotone ki-user fs-6 me-1">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                              {getOwnerName(lead.fields['Owner'])}
+                            </span>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="d-flex gap-2">
+                            {column.status !== 'Qualified' && (
+                              <button
+                                className="btn btn-sm btn-light-success flex-grow-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewContact(lead);
+                                }}
+                              >
+                                <i className="ki-duotone ki-arrow-right fs-5">
+                                  <span className="path1"></span>
+                                  <span className="path2"></span>
+                                </i>
+                                View Contact
+                              </button>
+                            )}
+                            {column.status !== 'Unqualified' && (
+                              <button
+                                className="btn btn-sm btn-light-danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateStatus(lead.id, 'Unqualified');
+                                }}
+                                title="Mark as Unqualified"
+                              >
+                                <i className="ki-duotone ki-cross fs-5">
+                                  <span className="path1"></span>
+                                  <span className="path2"></span>
+                                </i>
+                              </button>
+                            )}
+                            <button
+                              className="btn btn-sm btn-light"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(lead);
+                              }}
+                              title="Edit Lead"
+                            >
+                              <i className="ki-duotone ki-pencil fs-5">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                            </button>
+                            <button
+                              className="btn btn-sm btn-light-danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(lead.id);
+                              }}
+                              title="Delete Lead"
+                            >
+                              <i className="ki-duotone ki-trash fs-5">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                                <span className="path3"></span>
+                                <span className="path4"></span>
+                                <span className="path5"></span>
+                              </i>
+                            </button>
+                          </div>
+
+                          {/* Created Date */}
+                          <div className="text-muted fs-8 mt-3">
+                            {lead.fields['Created on']
+                              ? new Date(lead.fields['Created on']).toLocaleDateString()
+                              : ''}
                           </div>
                         </div>
-                        <div className="flex-grow-1">
-                          <span className="text-gray-900 fw-bold d-block fs-6">
-                            {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-                              ? lead.fields['Contact'][0]
-                              : 'N/A'}
-                          </span>
-                          {lead.fields['Title'] && (
-                            <span className="text-muted fs-7">{lead.fields['Title']}</span>
-                          )}
-                        </div>
                       </div>
+                    ))}
 
-                      {/* Company */}
-                      {lead.fields['Company'] && (
-                        <div className="mb-2">
-                          <i className="ki-duotone ki-shop fs-6 text-gray-500 me-2">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                          </i>
-                          <span className="text-gray-700 fs-7">{lead.fields['Company']}</span>
-                        </div>
-                      )}
-
-                      {/* Email */}
-                      {lead.fields['Email'] && (
-                        <div className="mb-2">
-                          <i className="ki-duotone ki-sms fs-6 text-gray-500 me-2">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                          </i>
-                          <span className="text-gray-700 fs-7">{lead.fields['Email']}</span>
-                        </div>
-                      )}
-
-                      {/* Phone */}
-                      {lead.fields['Phone'] && (
-                        <div className="mb-3">
-                          <i className="ki-duotone ki-phone fs-6 text-gray-500 me-2">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                          </i>
-                          <span className="text-gray-700 fs-7">{lead.fields['Phone']}</span>
-                        </div>
-                      )}
-
-                      {/* Owner */}
-                      <div className="d-flex align-items-center justify-content-between mb-3">
-                        <span
-                          className="text-gray-600 fs-7 cursor-pointer text-hover-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAssignOwner(lead.id, lead.fields['Owner']);
-                          }}
-                          title="Click to assign owner"
-                        >
-                          <i className="ki-duotone ki-user fs-6 me-1">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                          </i>
-                          {getOwnerName(lead.fields['Owner'])}
-                        </span>
+                    {/* Empty State */}
+                    {columnLeads.length === 0 && (
+                      <div className="text-center py-10 text-muted">
+                        No leads in this stage
                       </div>
-
-                      {/* Actions */}
-                      <div className="d-flex gap-2">
-                        {column.status !== 'Qualified' && (
-                          <button
-                            className="btn btn-sm btn-light-success flex-grow-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewContact(lead);
-                            }}
-                          >
-                            <i className="ki-duotone ki-arrow-right fs-5">
-                              <span className="path1"></span>
-                              <span className="path2"></span>
-                            </i>
-                            View Contact
-                          </button>
-                        )}
-                        {column.status !== 'Unqualified' && (
-                          <button
-                            className="btn btn-sm btn-light-danger"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateStatus(lead.id, 'Unqualified');
-                            }}
-                            title="Mark as Unqualified"
-                          >
-                            <i className="ki-duotone ki-cross fs-5">
-                              <span className="path1"></span>
-                              <span className="path2"></span>
-                            </i>
-                          </button>
-                        )}
-                        <button
-                          className="btn btn-sm btn-light"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewDetails(lead);
-                          }}
-                          title="View Details"
-                        >
-                          <i className="ki-duotone ki-eye fs-5">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                            <span className="path3"></span>
-                          </i>
-                        </button>
-                      </div>
-
-                      {/* Created Date */}
-                      <div className="text-muted fs-8 mt-3">
-                        {lead.fields['Created on']
-                          ? new Date(lead.fields['Created on']).toLocaleDateString()
-                          : ''}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                ))}
+                </div>
+              );
+            })}
+          </div>
 
-                {/* Empty State */}
-                {columnLeads.length === 0 && (
-                  <div className="text-center py-10 text-muted">
-                    No leads in this stage
-                  </div>
-                )}
-              </div>
+          <div className="d-flex justify-content-between align-items-center mt-5">
+            <div className="text-gray-600">
+              Total: {leads.length} lead{leads.length !== 1 ? 's' : ''}
             </div>
-          );
-        })}
-        </div>
-
-        <div className="d-flex justify-content-between align-items-center mt-5">
-          <div className="text-gray-600">
-            Total: {leads.length} lead{leads.length !== 1 ? 's' : ''}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={selectedLead ? (Array.isArray(selectedLead.fields['Contact']) && selectedLead.fields['Contact'].length > 0 ? selectedLead.fields['Contact'][0] : 'Lead Details') : 'Lead Details'}
+        size="lg"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            {selectedLead && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => handleDeleteLead(selectedLead)}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleEditClick(selectedLead)}
+                >
+                  Edit
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              className="btn btn-light"
+              onClick={() => setIsDetailsModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        }
+      >
+        {selectedLead && (
+          <div className="p-2">
+            {/* Contact Information */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-header bg-light-primary min-h-40px px-4 py-2">
+                <h6 className="card-title mb-0 text-primary fs-6">
+                  <i className="ki-duotone ki-profile-circle fs-3 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                  </i>
+                  Contact Information
+                </h6>
+              </div>
+              <div className="card-body p-4">
+                <div className="row g-3">
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Company</label>
+                    <div className="text-gray-800 fw-bold">{selectedLead.fields['Company'] || 'N/A'}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Title</label>
+                    <div className="text-gray-800">{selectedLead.fields['Title'] || 'N/A'}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Email</label>
+                    <div className="text-gray-800">{selectedLead.fields['Email'] || 'N/A'}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Phone</label>
+                    <div className="text-gray-800">{selectedLead.fields['Phone'] || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status & Assignment */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-header bg-light-info min-h-40px px-4 py-2">
+                <h6 className="card-title mb-0 text-info fs-6">
+                  <i className="ki-duotone ki-status fs-3 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                    <span className="path4"></span>
+                  </i>
+                  Status & Assignment
+                </h6>
+              </div>
+              <div className="card-body p-4">
+                <div className="row g-3">
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Status</label>
+                    <div>
+                      <span className="badge badge-light-primary fs-7">{selectedLead.fields['Status'] || 'N/A'}</span>
+                    </div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Owner</label>
+                    <div className="text-gray-800">{getOwnerName(selectedLead.fields['Owner'])}</div>
+                  </div>
+                  {selectedLead.fields['Last Interaction'] && (
+                    <div className="col-12">
+                      <label className="text-muted fs-7 fw-semibold">Last Interaction</label>
+                      <div className="text-gray-800">{new Date(selectedLead.fields['Last Interaction']).toLocaleDateString()}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Activity Summary */}
+            <div className="card shadow-sm">
+              <div className="card-header bg-light-success min-h-40px px-4 py-2">
+                <h6 className="card-title mb-0 text-success fs-6">
+                  <i className="ki-duotone ki-chart-simple fs-3 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                    <span className="path4"></span>
+                  </i>
+                  Activity Summary
+                </h6>
+              </div>
+              <div className="card-body p-4">
+                <div className="row g-3">
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Activities</label>
+                    <div className="text-gray-800 fw-bold fs-4">{Array.isArray(selectedLead.fields['Activities']) ? selectedLead.fields['Activities'].length : 0}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold">Deals</label>
+                    <div className="text-gray-800 fw-bold fs-4">{Array.isArray(selectedLead.fields['Deals']) ? selectedLead.fields['Deals'].length : 0}</div>
+                  </div>
+                  {selectedLead.fields['Created on'] && (
+                    <div className="col-12">
+                      <label className="text-muted fs-7 fw-semibold">Created On</label>
+                      <div className="text-gray-800">{new Date(selectedLead.fields['Created on']).toLocaleDateString()}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Confirm Deletion"
+        size="lg"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              className="btn btn-light"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleConfirmDelete}
+            >
+              Delete
+            </button>
+          </div>
+        }
+      >
+        <div className="p-2">
+          <p>Are you sure you want to delete this lead? This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Lead"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              className="btn btn-light"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSaveEdit}
+            >
+              Save Changes
+            </button>
+          </div>
+        }
+      >
+        <div className="p-2">
+          <div className="mb-5">
+            <label className="form-label fw-bold fs-6 mb-2">
+              Company
+            </label>
+            <input
+              className="form-control form-control-solid"
+              value={editForm.company}
+              onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+              placeholder="Enter company name"
+            />
+          </div>
+
+          <div className="row g-3 mb-5">
+            <div className="col-6">
+              <label className="form-label fw-bold fs-6 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                className="form-control form-control-solid"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="email@example.com"
+              />
+            </div>
+            <div className="col-6">
+              <label className="form-label fw-bold fs-6 mb-2">
+                Phone
+              </label>
+              <input
+                className="form-control form-control-solid"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                placeholder="+234 XXX XXX XXXX"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-bold fs-6 mb-2">
+              Job Title
+            </label>
+            <input
+              className="form-control form-control-solid"
+              value={editForm.title}
+              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              placeholder="Enter job title"
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Contact Details Modal */}
+      <Modal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        title={selectedContact ? (selectedContact.fields['Name'] || 'Contact Details') : 'Contact Details'}
+        size="lg"
+        footer={
+          <button className="btn btn-light" onClick={() => setIsContactModalOpen(false)}>Close</button>
+        }
+      >
+        {selectedContact && (
+          <div className="text-start">
+            <p><strong>Phone:</strong> {selectedContact.fields['Phone'] || 'N/A'}</p>
+            <p><strong>Email:</strong> {selectedContact.fields['Email'] || 'N/A'}</p>
+            <p><strong>Contact ID:</strong> {selectedContact.fields['Contact ID'] || 'N/A'}</p>
+            <p><strong>Created:</strong> {selectedContact.fields['Created on'] ? new Date(selectedContact.fields['Created on']).toLocaleDateString() : 'N/A'}</p>
+            {selectedContact.fields['Lead Status'] && Array.isArray(selectedContact.fields['Lead Status']) && (
+              <p><strong>Status:</strong> {selectedContact.fields['Lead Status'].join(', ')}</p>
+            )}
+            <p><strong>Activities:</strong> {Array.isArray(selectedContact.fields['Activities']) ? selectedContact.fields['Activities'].length : 0}</p>
+            <p><strong>Deals:</strong> {Array.isArray(selectedContact.fields['Deals']) ? selectedContact.fields['Deals'].length : 0}</p>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }

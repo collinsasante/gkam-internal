@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { applyActionCode } from 'firebase/auth';
 import { auth } from '../../services/firebase.config';
 
-declare const Swal: any;
-
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -24,28 +22,13 @@ export default function VerifyEmail() {
       try {
         // Apply the email verification code
         await applyActionCode(auth, oobCode);
-
         setVerifying(false);
 
-        // Show success message
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({
-            title: 'Email Verified!',
-            text: 'Your email has been successfully verified. You can now sign in.',
-            icon: 'success',
-            confirmButtonText: 'Go to Sign In',
-            customClass: {
-              confirmButton: 'btn btn-primary',
-            },
-          }).then(() => {
-            navigate('/login');
-          });
-        } else {
-          // Fallback if Swal is not available
-          setTimeout(() => {
-            navigate('/login');
-          }, 2000);
-        }
+        // Auto redirect after 3 seconds
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+
       } catch (err: any) {
         setVerifying(false);
         let errorMessage = 'Failed to verify email. The link may be invalid or expired.';
@@ -118,6 +101,12 @@ export default function VerifyEmail() {
           <p className="text-gray-600 fw-semibold fs-4 mb-8">
             Your email has been successfully verified. Redirecting to sign in...
           </p>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/login')}
+          >
+            Go to Sign In Now
+          </button>
         </div>
       </div>
     </div>

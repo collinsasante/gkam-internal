@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { authService } from '../../services/auth.service';
 import logoRed from '../logo_red.png';
+import Modal from '../Common/Modal';
 
 declare const Swal: any;
 
@@ -15,6 +16,10 @@ export default function Register({ onRegister, onBackToLogin }: RegisterProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Modal States
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,37 +66,10 @@ export default function Register({ onRegister, onBackToLogin }: RegisterProps) {
       const { needsVerification } = await authService.register(email, password, fullName);
 
       if (needsVerification) {
-        // Email verification sent
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({
-            title: 'Verify Your Email',
-            html: `
-              <p>We've sent a verification link to:</p>
-              <p class="fw-bold">${email}</p>
-              <p class="mt-3">Please check your inbox and click the verification link to activate your account.</p>
-              <p class="text-muted mt-2" style="font-size: 0.875rem;">Don't forget to check your spam folder!</p>
-            `,
-            icon: 'info',
-            confirmButtonText: 'OK',
-            customClass: {
-              confirmButton: 'btn btn-primary',
-            },
-          });
-        }
+        setIsVerifyModalOpen(true);
       } else {
-        // Account created without verification (fallback)
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({
-            title: 'Registration Successful!',
-            text: 'Your account has been created',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false,
-          });
-        }
+        setIsSuccessModalOpen(true);
       }
-
-      onRegister();
     } catch (error: any) {
       if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -106,115 +84,166 @@ export default function Register({ onRegister, onBackToLogin }: RegisterProps) {
     }
   };
 
+  const handleVerifyClose = () => {
+    setIsVerifyModalOpen(false);
+    onBackToLogin(); // Redirect to login after showing verification message
+  };
+
+  const handleSuccessClose = () => {
+    setIsSuccessModalOpen(false);
+    onRegister(); // Auto login or redirect to dashboard
+  };
+
   return (
-    <div className="auth-page d-flex align-items-center justify-content-center">
-      <div className="auth-form-container">
-        {/* Logo */}
-        <div className="auth-logo text-center mb-10">
-          <img src={logoRed} alt="GlamPack" style={{ height: '70px', width: 'auto' }} className="mb-4" />
-          <h1>Create Your Account</h1>
-          <div className="text-helper mt-2">
-            Register to access the Customer Service System
-          </div>
-        </div>
-
-        {/* Register Form */}
-        <form className="form w-100" onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="form-label">Full Name</label>
-            <input
-              className="form-control"
-              type="text"
-              placeholder="Enter your full name"
-              autoComplete="name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="form-label">Email</label>
-            <input
-              className="form-control"
-              type="email"
-              placeholder="Enter your company email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
+    <>
+      <div className="auth-page d-flex align-items-center justify-content-center">
+        <div className="auth-form-container">
+          {/* Logo */}
+          <div className="auth-logo text-center mb-10">
+            <img src={logoRed} alt="GlamPack" style={{ height: '70px', width: 'auto' }} className="mb-4" />
+            <h1>Create Your Account</h1>
             <div className="text-helper mt-2">
-              Use your email registered in the HR system
+              Register to access the Customer Service System
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="form-label">Password</label>
-            <input
-              className="form-control"
-              type="password"
-              placeholder="Create a password (min. 6 characters)"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+          {/* Register Form */}
+          <form className="form w-100" onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="form-label">Full Name</label>
+              <input
+                className="form-control"
+                type="text"
+                placeholder="Enter your full name"
+                autoComplete="name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
 
-          <div className="mb-4">
-            <label className="form-label">Confirm Password</label>
-            <input
-              className="form-control"
-              type="password"
-              placeholder="Re-enter your password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+            <div className="mb-4">
+              <label className="form-label">Email</label>
+              <input
+                className="form-control"
+                type="email"
+                placeholder="Enter your company email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+              <div className="text-helper mt-2">
+                Use your email registered in the HR system
+              </div>
+            </div>
 
-          <div className="d-grid mt-5 mb-4">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                  Creating Account...
-                </>
-              ) : (
-                <>
-                  <span>Create Account</span>
-                  <i className="ki-duotone ki-arrow-right fs-3 ms-2">
-                    <span className="path1"></span>
-                    <span className="path2"></span>
-                  </i>
-                </>
-              )}
-            </button>
-          </div>
+            <div className="mb-4">
+              <label className="form-label">Password</label>
+              <input
+                className="form-control"
+                type="password"
+                placeholder="Create a password (min. 6 characters)"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
 
-          <div className="auth-footer text-center">
-            <span className="text-helper">Already have an account? </span>
-            <button
-              type="button"
-              className="link-primary"
-              onClick={onBackToLogin}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-            >
-              Sign In
-            </button>
-          </div>
-        </form>
+            <div className="mb-4">
+              <label className="form-label">Confirm Password</label>
+              <input
+                className="form-control"
+                type="password"
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
 
-        <div className="text-center mt-5">
-          <span className="text-muted" style={{ fontSize: '0.875rem' }}>© 2024 GlamPack</span>
+            <div className="d-grid mt-5 mb-4">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    <span>Create Account</span>
+                    <i className="ki-duotone ki-arrow-right fs-3 ms-2">
+                      <span className="path1"></span>
+                      <span className="path2"></span>
+                    </i>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="auth-footer text-center">
+              <span className="text-helper">Already have an account? </span>
+              <button
+                type="button"
+                className="link-primary"
+                onClick={onBackToLogin}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                Sign In
+              </button>
+            </div>
+          </form>
+
+          <div className="text-center mt-5">
+            <span className="text-muted" style={{ fontSize: '0.875rem' }}>© 2024 GlamPack</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Verify Email Modal */}
+      <Modal
+        isOpen={isVerifyModalOpen}
+        onClose={handleVerifyClose}
+        title="Verify Your Email"
+        footer={<button className="btn btn-primary" onClick={handleVerifyClose}>OK</button>}
+      >
+        <div className="d-flex flex-column gap-3 text-center">
+          <i className="ki-duotone ki-sms fs-5x text-info mb-2">
+            <span className="path1"></span><span className="path2"></span>
+          </i>
+          <p>We've sent a verification link to:</p>
+          <p className="fw-bold fs-5">{email}</p>
+          <p className="text-muted">Please check your inbox and click the verification link to activate your account.</p>
+          <div className="alert alert-dismissible bg-light-info border border-info border-dashed d-flex flex-column flex-sm-row w-100 p-5 mb-10">
+            <div className="d-flex flex-column pe-0 pe-sm-10">
+              <h5 className="mb-1">Note</h5>
+              <span>Don't forget to check your spam folder!</span>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        onClose={handleSuccessClose}
+        title="Registration Successful!"
+        footer={<button className="btn btn-primary" onClick={handleSuccessClose}>Start Exploring</button>}
+      >
+        <div className="d-flex flex-column gap-3 text-center">
+          <i className="ki-duotone ki-check-circle fs-5x text-success mb-2">
+            <span className="path1"></span><span className="path2"></span>
+          </i>
+          <p className="fw-bold fs-4">Welcome, {fullName}!</p>
+          <p className="text-muted">Your account has been successfully created.</p>
+        </div>
+      </Modal>
+    </>
   );
 }

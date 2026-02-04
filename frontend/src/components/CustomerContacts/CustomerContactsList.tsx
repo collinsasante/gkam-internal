@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { customerContactService, teamMemberService, accountService, interactionService, taskService } from '../../services/airtable.service';
 import type { CustomerContact, TeamMember } from '../../types/airtable.types';
+import Modal from '../Common/Modal';
 
 // Declare jQuery and DataTables types
 declare const $: any;
@@ -13,6 +14,54 @@ export default function CustomerContactsList() {
   const [error, setError] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const dataTableRef = useRef<any>(null);
+
+  // Modal States
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
+  const [isAddInteractionModalOpen, setIsAddInteractionModalOpen] = useState(false);
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+
+  const [selectedContact, setSelectedContact] = useState<CustomerContact | null>(null);
+
+  // Forms State
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    phone: '',
+    source: '',
+    createdById: ''
+  });
+
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    source: '',
+    accountManager: ''
+  });
+
+  const [accountForm, setAccountForm] = useState({
+    name: '',
+    industry: '',
+    size: ''
+  });
+
+  const [interactionForm, setInteractionForm] = useState({
+    name: '',
+    type: '',
+    datetime: '',
+    teamMember: '',
+    notes: ''
+  });
+
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: '',
+    status: 'To Do',
+    dueDate: '',
+    assignedTo: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -38,7 +87,7 @@ export default function CustomerContactsList() {
 
     try {
       // Add custom sorting function for Customer ID (CU-1, CU-2, etc.)
-      $.fn.dataTable.ext.type.order['customer-id-pre'] = function(data: string) {
+      $.fn.dataTable.ext.type.order['customer-id-pre'] = function (data: string) {
         // Extract the number from "CU-123" format
         const match = data.match(/CU-(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
@@ -92,646 +141,193 @@ export default function CustomerContactsList() {
     }
   };
 
-  const handleCreate = () => {
-    if (typeof Swal !== 'undefined') {
-      // Build team members dropdown options
-      const teamMemberOptions = teamMembers.map(member =>
-        `<option value="${member.id}">${member.fields['Name']}</option>`
-      ).join('');
+  const handleCreateClick = () => {
+    setCreateForm({
+      name: '',
+      phone: '',
+      source: '',
+      createdById: ''
+    });
+    setIsCreateModalOpen(true);
+  };
 
-      Swal.fire({
-        title: 'Add New Customer Contact',
-        html: `
-          <div class="modal-form-section">
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-profile-circle fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Contact Name
-              </label>
-              <input type="text" class="form-control form-control-solid" id="create-name" placeholder="Enter contact name" />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-phone fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Phone Number
-              </label>
-              <input type="text" class="form-control form-control-solid" id="create-phone" placeholder="+234 XXX XXX XXXX" />
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-abstract-26 fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Discovery Source
-              </label>
-              <select class="form-select form-select-solid" id="create-source">
-                <option value="">Select source...</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Instagram">Instagram</option>
-                <option value="TikTok">TikTok</option>
-                <option value="Call">Call</option>
-                <option value="Walk-In">Walk-In</option>
-                <option value="Lead">Lead</option>
-              </select>
-            </div>
-            <div class="modal-form-group">
-              <label class="modal-form-label">
-                <i class="ki-duotone ki-user fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Created By
-              </label>
-              <select class="form-select form-select-solid" id="create-createdby">
-                <option value="">Select team member...</option>
-                ${teamMemberOptions}
-              </select>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Create Contact',
-        cancelButtonText: 'Cancel',
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light',
-        },
-        width: 600,
-        preConfirm: () => {
-          const name = (document.getElementById('create-name') as HTMLInputElement)?.value;
-          const phone = (document.getElementById('create-phone') as HTMLInputElement)?.value;
-          const source = (document.getElementById('create-source') as HTMLSelectElement)?.value;
-          const createdById = (document.getElementById('create-createdby') as HTMLSelectElement)?.value;
+  const handleCreateSubmit = async () => {
+    if (!createForm.name || !createForm.phone || !createForm.source) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please fill in all required fields', 'error');
+      return;
+    }
 
-          if (!name || !phone || !source) {
-            Swal.showValidationMessage('Please fill in all required fields');
-            return false;
-          }
+    try {
+      // Generate a unique Customer ID
+      const customerId = `CUST-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-          return { name, phone, source, createdById };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            // Generate a unique Customer ID
-            const customerId = `CUST-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-            await customerContactService.create({
-              'Customer ID': customerId,
-              'Contact Name': result.value.name,
-              'Phone': result.value.phone,
-              'Discovery Source': result.value.source,
-              'Created by': result.value.createdById ? [result.value.createdById] : undefined,
-            });
-
-            Swal.fire({
-              title: 'Success!',
-              text: 'Customer contact has been created',
-              icon: 'success',
-              confirmButtonText: 'Ok',
-              customClass: {
-                confirmButton: 'btn btn-primary',
-              },
-            });
-
-            loadData();
-          } catch (err) {
-            Swal.fire({
-              title: 'Error!',
-              text: 'Failed to create customer contact',
-              icon: 'error',
-              confirmButtonText: 'Ok',
-              customClass: {
-                confirmButton: 'btn btn-danger',
-              },
-            });
-          }
-        }
+      await customerContactService.create({
+        'Customer ID': customerId,
+        'Contact Name': createForm.name,
+        'Phone': createForm.phone,
+        'Discovery Source': createForm.source,
+        'Created by': createForm.createdById ? [createForm.createdById] : undefined,
       });
+
+      setIsCreateModalOpen(false);
+      loadData();
+      if (typeof Swal !== 'undefined') Swal.fire('Success', 'Customer contact has been created', 'success');
+    } catch (err) {
+      console.error(err);
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create customer contact', 'error');
     }
   };
 
   const handleRowClick = (contact: CustomerContact) => {
-    if (typeof Swal !== 'undefined') {
-      // Get team member names from linked IDs
-      const createdByName = contact.fields['Created by']?.[0]
-        ? teamMembers.find(tm => tm.id === contact.fields['Created by']?.[0])?.fields['Name'] || contact.fields['Created by']?.[0]
-        : 'N/A';
+    setSelectedContact(contact);
+    setIsDetailsModalOpen(true);
+  };
 
-      const accountManagerName = contact.fields['Account Manager']?.[0]
-        ? teamMembers.find(tm => tm.id === contact.fields['Account Manager']?.[0])?.fields['Name'] || contact.fields['Account Manager']?.[0]
-        : 'Unassigned';
+  const handleEditClick = (contact: CustomerContact) => {
+    setSelectedContact(contact);
+    setEditForm({
+      name: contact.fields['Contact Name'] || '',
+      phone: contact.fields['Phone'] || '',
+      source: contact.fields['Discovery Source'] || '',
+      accountManager: contact.fields['Account Manager']?.[0] || ''
+    });
+    setIsDetailsModalOpen(false);
+    setIsEditModalOpen(true);
+  };
 
-      Swal.fire({
-        title: `${contact.fields['Contact Name']}`,
-        html: `
-          <!-- Action Buttons Bar -->
-          <div class="modal-actions-bar">
-            <button class="btn btn-primary" id="edit-contact-btn">
-              <i class="ki-duotone ki-pencil fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
-              Edit
-            </button>
-            <button class="btn btn-light" id="add-account-btn">
-              <i class="ki-duotone ki-shop fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-              Add Account
-            </button>
-            <button class="btn btn-light" id="add-interaction-btn">
-              <i class="ki-duotone ki-messages fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-              Add Interaction
-            </button>
-            <button class="btn btn-light" id="add-task-btn">
-              <i class="ki-duotone ki-check-square fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
-              Add Task
-            </button>
-            <button class="btn btn-secondary" id="delete-contact-btn">
-              <i class="ki-duotone ki-trash fs-5 me-1"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
-              Delete
-            </button>
-          </div>
+  const handleEditSubmit = async () => {
+    if (!selectedContact) return;
 
-          <!-- Contact Information Section -->
-          <div class="modal-section">
-            <div class="modal-section-title">
-              <i class="ki-duotone ki-profile-circle fs-4">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-              </i>
-              Contact Information
-            </div>
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <div class="modal-info-label">Customer ID</div>
-                <div class="modal-info-value">${contact.fields['Customer ID'] || 'N/A'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Phone Number</div>
-                <div class="modal-info-value">${contact.fields['Phone'] || 'N/A'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Discovery Source</div>
-                <div class="modal-info-value">
-                  <span class="badge badge-primary">${contact.fields['Discovery Source'] || 'N/A'}</span>
-                </div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Account Manager</div>
-                <div class="modal-info-value">${accountManagerName}</div>
-              </div>
-            </div>
-          </div>
+    if (!editForm.name || !editForm.phone || !editForm.source) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please fill in all required fields', 'error');
+      return;
+    }
 
-          <!-- Activity & Tags Section -->
-          <div class="modal-section">
-            <div class="modal-section-title">
-              <i class="ki-duotone ki-tag fs-4">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-              </i>
-              Tags & Activity
-            </div>
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <div class="modal-info-label">Tags</div>
-                <div class="modal-info-value">
-                  ${Array.isArray(contact.fields['Tag']) && contact.fields['Tag'].length > 0
-                    ? contact.fields['Tag'].map(tag => `<span class="badge badge-light me-1 mb-1">${tag}</span>`).join('')
-                    : '<span style="color: #999;">No tags</span>'}
-                </div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Last Interaction</div>
-                <div class="modal-info-value">${contact.fields['Last Interaction'] || 'Never'}</div>
-              </div>
-              <div class="modal-info-item">
-                <div class="modal-info-label">Created By</div>
-                <div class="modal-info-value">${createdByName}</div>
-              </div>
-            </div>
-          </div>
-        `,
-        showConfirmButton: false,
-        showCloseButton: true,
-        width: 900,
-        customClass: {
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        didOpen: () => {
-          // Add event listeners for action buttons
-          document.getElementById('edit-contact-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleEdit(contact);
-          });
-          document.getElementById('add-account-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleAddAccount(contact);
-          });
-          document.getElementById('add-interaction-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleAddInteraction(contact);
-          });
-          document.getElementById('add-task-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleAddTask(contact);
-          });
-          document.getElementById('delete-contact-btn')?.addEventListener('click', () => {
-            Swal.close();
-            handleDelete(contact);
-          });
-        },
+    try {
+      await customerContactService.update(selectedContact.id, {
+        'Contact Name': editForm.name,
+        'Phone': editForm.phone,
+        'Discovery Source': editForm.source,
+        'Account Manager': editForm.accountManager ? [editForm.accountManager] : [],
       });
+
+      setIsEditModalOpen(false);
+      setIsDetailsModalOpen(true); // Reopen details
+
+      // Update local state temporarily
+      const updatedContact = {
+        ...selectedContact,
+        fields: {
+          ...selectedContact.fields,
+          'Contact Name': editForm.name,
+          'Phone': editForm.phone,
+          'Discovery Source': editForm.source,
+          'Account Manager': editForm.accountManager ? [editForm.accountManager] : []
+        }
+      };
+      setSelectedContact(updatedContact);
+      setContacts(current => current.map(c => c.id === updatedContact.id ? updatedContact : c));
+
+      if (typeof Swal !== 'undefined') Swal.fire({
+        icon: 'success',
+        title: 'Updated',
+        text: 'Contact has been updated',
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      console.error(err);
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to update contact', 'error');
     }
   };
 
-  const handleEdit = (contact: CustomerContact) => {
-    if (typeof Swal !== 'undefined') {
-      const teamMemberOptions = teamMembers.map(member =>
-        `<option value="${member.id}" ${contact.fields['Account Manager']?.[0] === member.id ? 'selected' : ''}>${member.fields['Name']}</option>`
-      ).join('');
+  const handleAddAccountClick = (contact: CustomerContact) => {
+    setSelectedContact(contact);
+    setAccountForm({ name: '', industry: '', size: '' });
+    setIsDetailsModalOpen(false);
+    setIsAddAccountModalOpen(true);
+  };
 
-      Swal.fire({
-        title: 'Edit Customer Contact',
-        html: `
-          <div class="modal-form-section">
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-profile-circle fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Contact Name
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="edit-name"
-                value="${contact.fields['Contact Name'] || ''}"
-                placeholder="Enter contact name"
-              />
-            </div>
+  const handleAddAccountSubmit = async () => {
+    if (!accountForm.name) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Account name is required', 'error');
+      return;
+    }
 
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-phone fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Phone Number
-              </label>
-              <input
-                type="text"
-                class="form-control form-control-solid"
-                id="edit-phone"
-                value="${contact.fields['Phone'] || ''}"
-                placeholder="+234 XXX XXX XXXX"
-              />
-            </div>
-
-            <div class="modal-form-group">
-              <label class="modal-form-label required">
-                <i class="ki-duotone ki-abstract-26 fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Discovery Source
-              </label>
-              <select class="form-select form-select-solid" id="edit-source">
-                <option value="WhatsApp" ${contact.fields['Discovery Source'] === 'WhatsApp' ? 'selected' : ''}>WhatsApp</option>
-                <option value="Facebook" ${contact.fields['Discovery Source'] === 'Facebook' ? 'selected' : ''}>Facebook</option>
-                <option value="Instagram" ${contact.fields['Discovery Source'] === 'Instagram' ? 'selected' : ''}>Instagram</option>
-                <option value="TikTok" ${contact.fields['Discovery Source'] === 'TikTok' ? 'selected' : ''}>TikTok</option>
-                <option value="Call" ${contact.fields['Discovery Source'] === 'Call' ? 'selected' : ''}>Call</option>
-                <option value="Walk-In" ${contact.fields['Discovery Source'] === 'Walk-In' ? 'selected' : ''}>Walk-In</option>
-                <option value="Lead" ${contact.fields['Discovery Source'] === 'Lead' ? 'selected' : ''}>Lead</option>
-              </select>
-            </div>
-
-            <div class="modal-form-group">
-              <label class="modal-form-label">
-                <i class="ki-duotone ki-user fs-5">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                </i>
-                Account Manager
-              </label>
-              <select class="form-select form-select-solid" id="edit-account-manager">
-                <option value="">Unassigned</option>
-                ${teamMemberOptions}
-              </select>
-              <div class="form-text">Assign a team member to manage this contact</div>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Save Changes',
-        cancelButtonText: 'Cancel',
-        buttonsStyling: false,
-        customClass: {
-          confirmButton: 'btn btn-primary',
-          cancelButton: 'btn btn-light me-3',
-          popup: 'rounded',
-          title: 'fs-4',
-          htmlContainer: 'p-0'
-        },
-        width: 700,
-        preConfirm: () => {
-          const name = (document.getElementById('edit-name') as HTMLInputElement)?.value;
-          const phone = (document.getElementById('edit-phone') as HTMLInputElement)?.value;
-          const source = (document.getElementById('edit-source') as HTMLSelectElement)?.value;
-          const accountManager = (document.getElementById('edit-account-manager') as HTMLSelectElement)?.value;
-
-          if (!name || !phone || !source) {
-            Swal.showValidationMessage('Please fill in all required fields');
-            return false;
-          }
-
-          return { name, phone, source, accountManager };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await customerContactService.update(contact.id, {
-              'Contact Name': result.value.name,
-              'Phone': result.value.phone,
-              'Discovery Source': result.value.source,
-              'Account Manager': result.value.accountManager ? [result.value.accountManager] : [],
-            });
-
-            Swal.fire({
-              title: 'Success!',
-              text: 'Contact has been updated',
-              icon: 'success',
-              confirmButtonText: 'Ok',
-              customClass: {
-                confirmButton: 'btn btn-primary',
-              },
-            });
-
-            loadData();
-          } catch (err) {
-            Swal.fire({
-              title: 'Error!',
-              text: 'Failed to update contact',
-              icon: 'error',
-              confirmButtonText: 'Ok',
-              customClass: {
-                confirmButton: 'btn btn-danger',
-              },
-            });
-          }
-        }
+    try {
+      await accountService.create({
+        'Account Name': accountForm.name,
+        'Industry': accountForm.industry || undefined,
+        'Size': accountForm.size || undefined,
       });
+      setIsAddAccountModalOpen(false);
+      setIsDetailsModalOpen(true);
+      if (typeof Swal !== 'undefined') Swal.fire('Success!', 'Account created successfully', 'success');
+      loadData();
+    } catch (err) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create account', 'error');
     }
   };
 
-  const handleAddAccount = (contact: CustomerContact) => {
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: `Add Account for ${contact.fields['Contact Name']}`,
-        html: `
-          <div class="d-flex flex-column gap-3 text-start">
-            <div class="fv-row">
-              <label class="form-label required">Account Name</label>
-              <input type="text" class="form-control" id="account-name" placeholder="Enter account name" />
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Industry</label>
-              <select class="form-select" id="account-industry">
-                <option value="">Select industry...</option>
-                <option value="Technology">Technology</option>
-                <option value="Retail">Retail</option>
-                <option value="Manufacturing">Manufacturing</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Finance">Finance</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Company Size</label>
-              <select class="form-select" id="account-size">
-                <option value="">Select size...</option>
-                <option value="1-10">1-10 employees</option>
-                <option value="11-50">11-50 employees</option>
-                <option value="51-200">51-200 employees</option>
-                <option value="201-500">201-500 employees</option>
-                <option value="500+">500+ employees</option>
-              </select>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Create Account',
-        cancelButtonText: 'Cancel',
-        width: 600,
-        preConfirm: () => {
-          const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
-          const industry = (document.getElementById('account-industry') as HTMLSelectElement)?.value;
-          const size = (document.getElementById('account-size') as HTMLSelectElement)?.value;
+  const handleAddInteractionClick = (contact: CustomerContact) => {
+    setSelectedContact(contact);
+    setInteractionForm({ name: '', type: '', datetime: '', teamMember: '', notes: '' });
+    setIsDetailsModalOpen(false);
+    setIsAddInteractionModalOpen(true);
+  };
 
-          if (!name) {
-            Swal.showValidationMessage('Account name is required');
-            return false;
-          }
+  const handleAddInteractionSubmit = async () => {
+    if (!interactionForm.name) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Interaction name is required', 'error');
+      return;
+    }
 
-          return { name, industry, size };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await accountService.create({
-              'Account Name': result.value.name,
-              'Industry': result.value.industry || undefined,
-              'Size': result.value.size || undefined,
-            });
-            Swal.fire('Success!', 'Account created successfully', 'success');
-            loadData();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to create account', 'error');
-          }
-        }
+    try {
+      await interactionService.create({
+        'Name': interactionForm.name,
+        'Type': interactionForm.type || undefined,
+        'Date & Time': interactionForm.datetime || undefined,
+        'Team Member': interactionForm.teamMember ? [interactionForm.teamMember] : undefined,
+        'Notes': interactionForm.notes || undefined,
       });
+      setIsAddInteractionModalOpen(false);
+      setIsDetailsModalOpen(true);
+      if (typeof Swal !== 'undefined') Swal.fire('Success!', 'Interaction created successfully', 'success');
+      loadData();
+    } catch (err) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create interaction', 'error');
     }
   };
 
-  const handleAddInteraction = (contact: CustomerContact) => {
-    if (typeof Swal !== 'undefined') {
-      const teamMemberOptions = teamMembers.map(member =>
-        `<option value="${member.id}">${member.fields['Name']}</option>`
-      ).join('');
-
-      Swal.fire({
-        title: `Add Interaction for ${contact.fields['Contact Name']}`,
-        html: `
-          <div class="d-flex flex-column gap-3 text-start">
-            <div class="fv-row">
-              <label class="form-label required">Interaction Name</label>
-              <input type="text" class="form-control" id="interaction-name" placeholder="Enter interaction name" />
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Type</label>
-              <select class="form-select" id="interaction-type">
-                <option value="">Select type...</option>
-                <option value="Discovery">Discovery</option>
-                <option value="Label discussion">Label discussion</option>
-                <option value="Price Discussion">Price Discussion</option>
-                <option value="Custom Solution">Custom Solution</option>
-                <option value="Weekly Check-in">Weekly Check-in</option>
-              </select>
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Date & Time</label>
-              <input type="datetime-local" class="form-control" id="interaction-datetime" />
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Team Member</label>
-              <select class="form-select" id="interaction-team-member">
-                <option value="">Select team member...</option>
-                ${teamMemberOptions}
-              </select>
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Notes</label>
-              <textarea class="form-control" id="interaction-notes" rows="3" placeholder="Enter notes"></textarea>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Create Interaction',
-        cancelButtonText: 'Cancel',
-        width: 600,
-        preConfirm: () => {
-          const name = (document.getElementById('interaction-name') as HTMLInputElement)?.value;
-          const type = (document.getElementById('interaction-type') as HTMLSelectElement)?.value;
-          const datetime = (document.getElementById('interaction-datetime') as HTMLInputElement)?.value;
-          const teamMember = (document.getElementById('interaction-team-member') as HTMLSelectElement)?.value;
-          const notes = (document.getElementById('interaction-notes') as HTMLTextAreaElement)?.value;
-
-          if (!name) {
-            Swal.showValidationMessage('Interaction name is required');
-            return false;
-          }
-
-          return { name, type, datetime, teamMember, notes };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await interactionService.create({
-              'Name': result.value.name,
-              'Type': result.value.type || undefined,
-              'Date & Time': result.value.datetime || undefined,
-              'Team Member': result.value.teamMember ? [result.value.teamMember] : undefined,
-              'Notes': result.value.notes || undefined,
-            });
-            Swal.fire('Success!', 'Interaction created successfully', 'success');
-            loadData();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to create interaction', 'error');
-          }
-        }
-      });
-    }
+  const handleAddTaskClick = (contact: CustomerContact) => {
+    setSelectedContact(contact);
+    setTaskForm({ title: '', description: '', priority: '', status: 'To Do', dueDate: '', assignedTo: '' });
+    setIsDetailsModalOpen(false);
+    setIsAddTaskModalOpen(true);
   };
 
-  const handleAddTask = (contact: CustomerContact) => {
-    if (typeof Swal !== 'undefined') {
-      const teamMemberOptions = teamMembers.map(member =>
-        `<option value="${member.id}">${member.fields['Name']}</option>`
-      ).join('');
+  const handleAddTaskSubmit = async () => {
+    if (!taskForm.title) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Task title is required', 'error');
+      return;
+    }
 
-      Swal.fire({
-        title: `Add Task for ${contact.fields['Contact Name']}`,
-        html: `
-          <div class="d-flex flex-column gap-3 text-start">
-            <div class="fv-row">
-              <label class="form-label required">Task Title</label>
-              <input type="text" class="form-control" id="task-title" placeholder="Enter task title" />
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Description</label>
-              <textarea class="form-control" id="task-description" rows="3" placeholder="Enter task description"></textarea>
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Priority</label>
-              <select class="form-select" id="task-priority">
-                <option value="">Select priority...</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Status</label>
-              <select class="form-select" id="task-status">
-                <option value="To Do">To Do</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Done">Done</option>
-              </select>
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Due Date</label>
-              <input type="date" class="form-control" id="task-duedate" />
-            </div>
-            <div class="fv-row">
-              <label class="form-label">Assigned To</label>
-              <select class="form-select" id="task-assigned-to">
-                <option value="">Select team member...</option>
-                ${teamMemberOptions}
-              </select>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Create Task',
-        cancelButtonText: 'Cancel',
-        width: 600,
-        preConfirm: () => {
-          const title = (document.getElementById('task-title') as HTMLInputElement)?.value;
-          const description = (document.getElementById('task-description') as HTMLTextAreaElement)?.value;
-          const priority = (document.getElementById('task-priority') as HTMLSelectElement)?.value;
-          const status = (document.getElementById('task-status') as HTMLSelectElement)?.value;
-          const dueDate = (document.getElementById('task-duedate') as HTMLInputElement)?.value;
-          const assignedTo = (document.getElementById('task-assigned-to') as HTMLSelectElement)?.value;
-
-          if (!title) {
-            Swal.showValidationMessage('Task title is required');
-            return false;
-          }
-
-          return { title, description, priority, status, dueDate, assignedTo };
-        },
-      }).then(async (result: any) => {
-        if (result.isConfirmed) {
-          try {
-            await taskService.create({
-              'Task Title': result.value.title,
-              'Task Description': result.value.description || undefined,
-              'Priority': result.value.priority || undefined,
-              'Status': result.value.status || 'To do',
-              'Task Deadline': result.value.dueDate || undefined,
-              'Task Owner': result.value.assignedTo ? [result.value.assignedTo] : undefined,
-              'Customer Contact': [contact.id],
-            });
-            Swal.fire('Success!', 'Task created successfully', 'success');
-            loadData();
-          } catch (err) {
-            Swal.fire('Error', 'Failed to create task', 'error');
-          }
-        }
+    try {
+      await taskService.create({
+        'Task Title': taskForm.title,
+        'Task Description': taskForm.description || undefined,
+        'Priority': taskForm.priority || undefined,
+        'Status': taskForm.status || 'To do',
+        'Task Deadline': taskForm.dueDate || undefined,
+        'Task Owner': taskForm.assignedTo ? [taskForm.assignedTo] : undefined,
+        'Customer Contact': selectedContact ? [selectedContact.id] : undefined,
       });
+      setIsAddTaskModalOpen(false);
+      setIsDetailsModalOpen(true);
+      if (typeof Swal !== 'undefined') Swal.fire('Success!', 'Task created successfully', 'success');
+      loadData();
+    } catch (err) {
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create task', 'error');
     }
   };
 
@@ -764,32 +360,13 @@ export default function CustomerContactsList() {
   const deleteContact = async (id: string) => {
     try {
       await customerContactService.delete(id);
-
+      setIsDetailsModalOpen(false);
       if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Deleted!',
-          text: 'Contact has been deleted successfully',
-          icon: 'success',
-          confirmButtonText: 'Ok',
-          customClass: {
-            confirmButton: 'btn btn-primary',
-          },
-        });
+        Swal.fire('Deleted!', 'Contact has been deleted.', 'success');
       }
-
       loadData();
     } catch (err) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Error!',
-          text: 'Failed to delete contact',
-          icon: 'error',
-          confirmButtonText: 'Ok',
-          customClass: {
-            confirmButton: 'btn btn-danger',
-          },
-        });
-      }
+      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to delete contact', 'error');
       console.error(err);
     }
   };
@@ -839,130 +416,436 @@ export default function CustomerContactsList() {
   }
 
   return (
-    <div className="card">
-      {/* Card Header */}
-      <div className="card-header border-0 pt-6">
-        <div className="card-title">
-          <h2 className="fw-bold">Customer Contacts</h2>
+    <>
+      <div className="card">
+        {/* Card Header */}
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <h2 className="fw-bold">Customer Contacts</h2>
+          </div>
+          <div className="card-toolbar">
+            <div className="d-flex justify-content-end gap-2" data-kt-customer-table-toolbar="base">
+              <button className="btn btn-primary" onClick={handleCreateClick}>
+                <i className="ki-duotone ki-plus fs-2">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                </i>
+                Add Customer
+              </button>
+              <button className="btn btn-light" onClick={loadData}>
+                <i className="ki-duotone ki-arrows-loop fs-4">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                </i>
+                Refresh
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="card-toolbar">
-          <div className="d-flex justify-content-end gap-2" data-kt-customer-table-toolbar="base">
-            <button className="btn btn-primary" onClick={handleCreate}>
-              <i className="ki-duotone ki-plus fs-2">
-                <span className="path1"></span>
-                <span className="path2"></span>
-              </i>
-              Add Customer
-            </button>
-            <button className="btn btn-light" onClick={loadData}>
-              <i className="ki-duotone ki-arrows-loop fs-4">
-                <span className="path1"></span>
-                <span className="path2"></span>
-              </i>
-              Refresh
-            </button>
+
+        {/* Card Body */}
+        <div className="card-body py-4">
+          {/* Search Bar */}
+          <div className="d-flex align-items-center position-relative mb-5">
+            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
+              <span className="path1"></span>
+              <span className="path2"></span>
+            </i>
+            <input
+              type="text"
+              data-kt-customer-table-filter="search"
+              className="form-control form-control-solid w-250px ps-13"
+              placeholder="Search contacts..."
+            />
+          </div>
+
+          {/* Table */}
+          <div className="table-responsive">
+            <table
+              ref={tableRef}
+              id="kt_customers_table"
+              className="table align-middle table-row-dashed fs-6 gy-5"
+            >
+              <thead>
+                <tr className="text-start text-gray-400 fw-bold fs-7 text-uppercase gs-0">
+                  <th className="min-w-125px">Customer ID</th>
+                  <th className="min-w-125px">Contact Name</th>
+                  <th className="min-w-125px">Phone</th>
+                  <th className="min-w-125px">Source</th>
+                  <th className="min-w-125px">Account Manager</th>
+                  <th className="min-w-100px">Tags</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-600 fw-semibold">
+                {contacts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-10">
+                      <div className="text-gray-600 fs-4 mb-3">No customer contacts found</div>
+                      <button className="btn btn-primary" onClick={handleCreateClick}>
+                        <i className="ki-duotone ki-plus fs-2">
+                          <span className="path1"></span>
+                          <span className="path2"></span>
+                        </i>
+                        Add Your First Customer
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  contacts.map((contact) => (
+                    <tr
+                      key={contact.id}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleRowClick(contact)}
+                      className="table-row-hover"
+                    >
+                      <td>
+                        <span className="text-gray-800 text-hover-primary mb-1">
+                          {contact.fields['Customer ID'] || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-gray-800 text-hover-primary mb-1 fw-bold">
+                          {contact.fields['Contact Name'] || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-gray-800 mb-1">
+                          {contact.fields['Phone'] || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        {contact.fields['Discovery Source'] && (
+                          <span className={`badge ${getSourceBadgeClass(contact.fields['Discovery Source'])}`}>
+                            {contact.fields['Discovery Source']}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="text-gray-800">
+                          {getTeamMemberName(contact.fields['Account Manager']?.[0])}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex gap-1 flex-wrap">
+                          {Array.isArray(contact.fields['Tag']) && contact.fields['Tag'].map((tag, index) => (
+                            <span key={index} className="badge badge-light-warning">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {/* Card Body */}
-      <div className="card-body py-4">
-        {/* Search Bar */}
-        <div className="d-flex align-items-center position-relative mb-5">
-          <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-            <span className="path1"></span>
-            <span className="path2"></span>
-          </i>
-          <input
-            type="text"
-            data-kt-customer-table-filter="search"
-            className="form-control form-control-solid w-250px ps-13"
-            placeholder="Search contacts..."
-          />
+      {/* Create Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Add New Customer Contact"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsCreateModalOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleCreateSubmit}>Create Contact</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label required">Contact Name</label>
+            <input className="form-control form-control-solid" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Enter contact name" />
+          </div>
+          <div>
+            <label className="form-label required">Phone Number</label>
+            <input className="form-control form-control-solid" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="+234 XXX XXX XXXX" />
+          </div>
+          <div>
+            <label className="form-label required">Discovery Source</label>
+            <select className="form-select form-select-solid" value={createForm.source} onChange={(e) => setCreateForm({ ...createForm, source: e.target.value })}>
+              <option value="">Select source...</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Instagram">Instagram</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Call">Call</option>
+              <option value="Walk-In">Walk-In</option>
+              <option value="Lead">Lead</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Created By</label>
+            <select className="form-select form-select-solid" value={createForm.createdById} onChange={(e) => setCreateForm({ ...createForm, createdById: e.target.value })}>
+              <option value="">Select team member...</option>
+              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+            </select>
+          </div>
         </div>
+      </Modal>
 
-        {/* Table */}
-        <div className="table-responsive">
-          <table
-            ref={tableRef}
-            id="kt_customers_table"
-            className="table align-middle table-row-dashed fs-6 gy-5"
-          >
-            <thead>
-              <tr className="text-start text-gray-400 fw-bold fs-7 text-uppercase gs-0">
-                <th className="min-w-125px">Customer ID</th>
-                <th className="min-w-125px">Contact Name</th>
-                <th className="min-w-125px">Phone</th>
-                <th className="min-w-125px">Source</th>
-                <th className="min-w-125px">Account Manager</th>
-                <th className="min-w-100px">Tags</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-600 fw-semibold">
-              {contacts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10">
-                    <div className="text-gray-600 fs-4 mb-3">No customer contacts found</div>
-                    <button className="btn btn-primary" onClick={handleCreate}>
-                      <i className="ki-duotone ki-plus fs-2">
-                        <span className="path1"></span>
-                        <span className="path2"></span>
-                      </i>
-                      Add Your First Customer
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                contacts.map((contact) => (
-                  <tr
-                    key={contact.id}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleRowClick(contact)}
-                    className="table-row-hover"
-                  >
-                    <td>
-                      <span className="text-gray-800 text-hover-primary mb-1">
-                        {contact.fields['Customer ID'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="text-gray-800 text-hover-primary mb-1 fw-bold">
-                        {contact.fields['Contact Name'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="text-gray-800 mb-1">
-                        {contact.fields['Phone'] || 'N/A'}
-                      </span>
-                    </td>
-                    <td>
-                      {contact.fields['Discovery Source'] && (
-                        <span className={`badge ${getSourceBadgeClass(contact.fields['Discovery Source'])}`}>
-                          {contact.fields['Discovery Source']}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="text-gray-800">
-                        {getTeamMemberName(contact.fields['Account Manager']?.[0])}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="d-flex gap-1 flex-wrap">
-                        {Array.isArray(contact.fields['Tag']) && contact.fields['Tag'].map((tag, index) => (
-                          <span key={index} className="badge badge-light-warning">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => { setIsEditModalOpen(false); setIsDetailsModalOpen(true); }}
+        title="Edit Customer Contact"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsEditModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleEditSubmit}>Save Changes</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label required">Contact Name</label>
+            <input className="form-control form-control-solid" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label required">Phone Number</label>
+            <input className="form-control form-control-solid" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label required">Discovery Source</label>
+            <select className="form-select form-select-solid" value={editForm.source} onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Instagram">Instagram</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Call">Call</option>
+              <option value="Walk-In">Walk-In</option>
+              <option value="Lead">Lead</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Account Manager</label>
+            <select className="form-select form-select-solid" value={editForm.accountManager} onChange={(e) => setEditForm({ ...editForm, accountManager: e.target.value })}>
+              <option value="">Unassigned</option>
+              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+            </select>
+          </div>
         </div>
-      </div>
-    </div>
+      </Modal>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={selectedContact ? selectedContact.fields['Contact Name'] : 'Contact Details'}
+        size="lg"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-danger me-auto" onClick={() => selectedContact && handleDelete(selectedContact)}>Delete</button>
+            <button className="btn btn-light" onClick={() => setIsDetailsModalOpen(false)}>Close</button>
+          </div>
+        }
+      >
+        {selectedContact && (
+          <div className="d-flex flex-column gap-4">
+            {/* Action Buttons */}
+            <div className="d-flex gap-2 flex-wrap border-bottom pb-4 mb-2">
+              <button className="btn btn-sm btn-primary" onClick={() => handleEditClick(selectedContact)}>
+                <i className="ki-duotone ki-pencil fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Edit
+              </button>
+              <button className="btn btn-sm btn-light" onClick={() => handleAddAccountClick(selectedContact)}>
+                <i className="ki-duotone ki-shop fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Add Account
+              </button>
+              <button className="btn btn-sm btn-light" onClick={() => handleAddInteractionClick(selectedContact)}>
+                <i className="ki-duotone ki-message-text-2 fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Add Interaction
+              </button>
+              <button className="btn btn-sm btn-light" onClick={() => handleAddTaskClick(selectedContact)}>
+                <i className="ki-duotone ki-calendar-tick fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Add Task
+              </button>
+            </div>
+
+            <div className="row g-3">
+              <h5 className="text-primary mb-2">Contact Info</h5>
+              <div className="col-md-6">
+                <label className="text-muted fw-bold small">Customer ID</label>
+                <div className="fw-bold">{selectedContact.fields['Customer ID']}</div>
+              </div>
+              <div className="col-md-6">
+                <label className="text-muted fw-bold small">Phone</label>
+                <div className="fw-bold">{selectedContact.fields['Phone']}</div>
+              </div>
+              <div className="col-md-6">
+                <label className="text-muted fw-bold small">Source</label>
+                <div><span className={`badge ${getSourceBadgeClass(selectedContact.fields['Discovery Source'])}`}>{selectedContact.fields['Discovery Source']}</span></div>
+              </div>
+              <div className="col-md-6">
+                <label className="text-muted fw-bold small">Account Manager</label>
+                <div className="fw-bold">{getTeamMemberName(selectedContact.fields['Account Manager']?.[0])}</div>
+              </div>
+            </div>
+
+            <div className="border-top pt-4 mt-2">
+              <h5 className="text-primary mb-2">Activity & Tags</h5>
+              <div className="row g-3">
+                <div className="col-md-12">
+                  <label className="text-muted fw-bold small d-block mb-1">Tags</label>
+                  <div>
+                    {Array.isArray(selectedContact.fields['Tag']) && selectedContact.fields['Tag'].length > 0
+                      ? selectedContact.fields['Tag'].map((tag, i) => <span key={i} className="badge badge-light me-1">{tag}</span>)
+                      : <span className="text-muted">No tags</span>}
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <label className="text-muted fw-bold small">Last Interaction</label>
+                  <div>{selectedContact.fields['Last Interaction'] || 'Never'}</div>
+                </div>
+                <div className="col-md-6">
+                  <label className="text-muted fw-bold small">Created By</label>
+                  <div>{getTeamMemberName(selectedContact.fields['Created by']?.[0])}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Add Account Modal */}
+      <Modal
+        isOpen={isAddAccountModalOpen}
+        onClose={() => { setIsAddAccountModalOpen(false); setIsDetailsModalOpen(true); }}
+        title={`Add Account for ${selectedContact?.fields['Contact Name']}`}
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsAddAccountModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleAddAccountSubmit}>Create Account</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label required">Account Name</label>
+            <input className="form-control" value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} placeholder="Enter account name" />
+          </div>
+          <div>
+            <label className="form-label">Industry</label>
+            <select className="form-select" value={accountForm.industry} onChange={(e) => setAccountForm({ ...accountForm, industry: e.target.value })}>
+              <option value="">Select industry...</option>
+              <option value="Technology">Technology</option>
+              <option value="Retail">Retail</option>
+              <option value="Manufacturing">Manufacturing</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Finance">Finance</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Company Size</label>
+            <select className="form-select" value={accountForm.size} onChange={(e) => setAccountForm({ ...accountForm, size: e.target.value })}>
+              <option value="">Select size...</option>
+              <option value="1-10">1-10 employees</option>
+              <option value="11-50">11-50 employees</option>
+              <option value="51-200">51-200 employees</option>
+              <option value="201-500">201-500 employees</option>
+              <option value="500+">500+ employees</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Interaction Modal */}
+      <Modal
+        isOpen={isAddInteractionModalOpen}
+        onClose={() => { setIsAddInteractionModalOpen(false); setIsDetailsModalOpen(true); }}
+        title={`Add Interaction for ${selectedContact?.fields['Contact Name']}`}
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsAddInteractionModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleAddInteractionSubmit}>Create Interaction</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label required">Interaction Name</label>
+            <input className="form-control" value={interactionForm.name} onChange={(e) => setInteractionForm({ ...interactionForm, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label">Type</label>
+            <select className="form-select" value={interactionForm.type} onChange={(e) => setInteractionForm({ ...interactionForm, type: e.target.value })}>
+              <option value="">Select type...</option>
+              <option value="Discovery">Discovery</option>
+              <option value="Label discussion">Label discussion</option>
+              <option value="Price Discussion">Price Discussion</option>
+              <option value="Custom Solution">Custom Solution</option>
+              <option value="Weekly Check-in">Weekly Check-in</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Date & Time</label>
+            <input type="datetime-local" className="form-control" value={interactionForm.datetime} onChange={(e) => setInteractionForm({ ...interactionForm, datetime: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label">Team Member</label>
+            <select className="form-select" value={interactionForm.teamMember} onChange={(e) => setInteractionForm({ ...interactionForm, teamMember: e.target.value })}>
+              <option value="">Select team member...</option>
+              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea className="form-control" rows={3} value={interactionForm.notes} onChange={(e) => setInteractionForm({ ...interactionForm, notes: e.target.value })}></textarea>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Task Modal */}
+      <Modal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => { setIsAddTaskModalOpen(false); setIsDetailsModalOpen(true); }}
+        title={`Add Task for ${selectedContact?.fields['Contact Name']}`}
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsAddTaskModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleAddTaskSubmit}>Create Task</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label required">Task Title</label>
+            <input className="form-control" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label">Description</label>
+            <textarea className="form-control" rows={3} value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}></textarea>
+          </div>
+          <div>
+            <label className="form-label">Priority</label>
+            <select className="form-select" value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}>
+              <option value="">Select priority...</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Status</label>
+            <select className="form-select" value={taskForm.status} onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}>
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Due Date</label>
+            <input type="date" className="form-control" value={taskForm.dueDate} onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label">Assigned To</label>
+            <select className="form-select" value={taskForm.assignedTo} onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}>
+              <option value="">Select team member...</option>
+              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+            </select>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
