@@ -9,9 +9,10 @@ declare const Swal: any;
 interface HeaderProps {
   currentUser: AuthUser | null;
   onLogout: () => void;
+  onToggleSidebar: () => void;
 }
 
-export default function Header({ currentUser, onLogout }: HeaderProps) {
+export default function Header({ currentUser, onLogout, onToggleSidebar }: HeaderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -157,12 +158,7 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
             <button
               className="btn btn-icon btn-active-color-primary w-35px h-35px"
               id="kt_app_sidebar_mobile_toggle"
-              onClick={() => {
-                const sidebar = document.getElementById('kt_app_sidebar');
-                if (sidebar) {
-                  sidebar.classList.toggle('drawer-on');
-                }
-              }}
+              onClick={onToggleSidebar}
             >
               <i className="ki-duotone ki-abstract-14 fs-1">
                 <span className="path1"></span>
@@ -332,7 +328,6 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         title="User Profile"
-        width={400}
         footer={<button className="btn btn-light" onClick={() => setIsProfileOpen(false)}>Close</button>}
       >
         <div className="d-flex flex-column gap-3">

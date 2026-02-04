@@ -46,10 +46,12 @@ function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [showRegister, setShowRegister] = useState(false);
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // Check for special auth routes (email verification, password reset, auth action handler)
   const isAuthActionRoute = location.pathname === '/verify-email' ||
-                             location.pathname === '/reset-password' ||
-                             location.pathname === '/auth/action';
+    location.pathname === '/reset-password' ||
+    location.pathname === '/auth/action';
 
   useEffect(() => {
     // Check if user is already logged in
@@ -79,10 +81,16 @@ function App() {
       setCurrentUser(null);
       setActiveView('dashboard');
       setShowRegister(false);
+      setIsMobileSidebarOpen(false);
     } catch (error) {
       console.error('Logout failed:', error);
     }
   };
+
+  // Close sidebar on route change or view change
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location, activeView]);
 
   // Special routes for email verification and password reset (accessible without auth)
   if (isAuthActionRoute) {
@@ -155,9 +163,27 @@ function App() {
   return (
     <div className="d-flex flex-column flex-root app-root" id="kt_app_root">
       <div className="app-page flex-column flex-column-fluid" id="kt_app_page">
-        <Header currentUser={currentUser} onLogout={handleLogout} />
+        <Header
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        />
         <div className="app-wrapper flex-column flex-row-fluid" id="kt_app_wrapper">
-          <Sidebar activeView={activeView} onViewChange={setActiveView} currentUser={currentUser} />
+          <Sidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+            currentUser={currentUser}
+            isOpen={isMobileSidebarOpen}
+            onClose={() => setIsMobileSidebarOpen(false)}
+          />
+          {/* Mobile Sidebar Overlay */}
+          {isMobileSidebarOpen && (
+            <div
+              className="drawer-overlay"
+              style={{ zIndex: 109, position: 'fixed', top: 0, left: 0, bottom: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }}
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
           <div className="app-main flex-column flex-row-fluid" id="kt_app_main">
             <div className="d-flex flex-column flex-column-fluid">
               <div className="app-content flex-column-fluid" id="kt_app_content">

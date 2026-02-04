@@ -5,11 +5,13 @@ interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
   currentUser: AuthUser | null;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 import logoRed from '../logo_red.png';
 
-export default function Sidebar({ activeView, onViewChange, currentUser }: SidebarProps) {
+export default function Sidebar({ activeView, onViewChange, currentUser, isOpen, onClose }: SidebarProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Overview': true,
@@ -82,7 +84,7 @@ export default function Sidebar({ activeView, onViewChange, currentUser }: Sideb
 
   return (
     <div
-      className="app-sidebar flex-column"
+      className={`app-sidebar flex-column ${isOpen ? 'drawer-on' : ''}`}
       data-kt-drawer="true"
       data-kt-drawer-name="app-sidebar"
       data-kt-drawer-activate="{default: true, lg: false}"
