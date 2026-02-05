@@ -3,7 +3,7 @@ import { accountService, interactionService, taskService, teamMemberService } fr
 import type { Account, TeamMember } from '../../types/airtable.types';
 import Modal from '../Common/Modal';
 
-declare const Swal: any;
+
 
 export default function AccountsList() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -20,6 +20,14 @@ export default function AccountsList() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
@@ -66,7 +74,7 @@ export default function AccountsList() {
 
   const handleCreateSubmit = async () => {
     if (!formData.accountName) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Account Name is required' });
+      showFeedback('error', 'Account Name is required');
       return;
     }
 
@@ -84,12 +92,12 @@ export default function AccountsList() {
         'Account owner': formData.accountOwner ? [formData.accountOwner] : undefined,
         'Notes': formData.notes || undefined,
       });
-      Swal.fire('Success!', 'Account has been created.', 'success');
+      showFeedback('success', 'Account has been created.');
       loadAccounts();
       setIsCreateModalOpen(false);
     } catch (err) {
       console.error(err);
-      Swal.fire('Error', 'Failed to create account', 'error');
+      showFeedback('error', 'Failed to create account');
     }
   };
 
@@ -117,7 +125,7 @@ export default function AccountsList() {
   const handleEditSubmit = async () => {
     if (!selectedAccount) return;
     if (!formData.accountName) {
-      Swal.fire('Error', 'Account name is required', 'error');
+      showFeedback('error', 'Account name is required');
       return;
     }
 
@@ -132,35 +140,30 @@ export default function AccountsList() {
         'Social Media Handle': formData.social || undefined,
         'Notes': formData.notes || undefined,
       });
-      Swal.fire('Updated!', 'Account has been updated.', 'success');
+      showFeedback('success', 'Account has been updated.');
       loadAccounts();
       setIsEditModalOpen(false);
     } catch (err) {
-      Swal.fire('Error', 'Failed to update account', 'error');
+      showFeedback('error', 'Failed to update account');
     }
   };
 
   const handleDelete = (account: Account) => {
+    setSelectedAccount(account);
     setIsViewModalOpen(false);
-    Swal.fire({
-      title: 'Delete Account?',
-      text: `Are you sure you want to delete ${account.fields['Account Name']}? This action cannot be undone.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#dc3545',
-    }).then(async (result: any) => {
-      if (result.isConfirmed) {
-        try {
-          await accountService.delete(account.id);
-          Swal.fire('Deleted!', 'Account has been deleted.', 'success');
-          loadAccounts();
-        } catch (err) {
-          Swal.fire('Error', 'Failed to delete account', 'error');
-        }
-      }
-    });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedAccount) return;
+    try {
+      await accountService.delete(selectedAccount.id);
+      showFeedback('success', 'Account has been deleted.');
+      loadAccounts();
+      setIsDeleteModalOpen(false);
+    } catch (err) {
+      showFeedback('error', 'Failed to delete account');
+    }
   };
 
   const openInteractionModal = (account: Account) => {
@@ -173,7 +176,7 @@ export default function AccountsList() {
   const handleInteractionSubmit = async () => {
     if (!selectedAccount) return;
     if (!formData.name) {
-      Swal.fire('Error', 'Interaction Name is required', 'error');
+      showFeedback('error', 'Interaction Name is required');
       return;
     }
 
@@ -185,10 +188,10 @@ export default function AccountsList() {
         'Notes': formData.notes || undefined,
         'Account': [selectedAccount.id],
       });
-      Swal.fire('Added!', 'Interaction has been added.', 'success');
+      showFeedback('success', 'Interaction has been added.');
       setIsInteractionModalOpen(false);
     } catch (err) {
-      Swal.fire('Error', 'Failed to add interaction', 'error');
+      showFeedback('error', 'Failed to add interaction');
     }
   };
 
@@ -202,7 +205,7 @@ export default function AccountsList() {
   const handleTaskSubmit = async () => {
     if (!selectedAccount) return;
     if (!formData.title) {
-      Swal.fire('Error', 'Task Title is required', 'error');
+      showFeedback('error', 'Task Title is required');
       return;
     }
 
@@ -215,10 +218,10 @@ export default function AccountsList() {
         'Task Deadline': formData.deadline || undefined,
         'Accounts': [selectedAccount.id],
       });
-      Swal.fire('Added!', 'Task has been added.', 'success');
+      showFeedback('success', 'Task has been added.');
       setIsTaskModalOpen(false);
     } catch (err) {
-      Swal.fire('Error', 'Failed to add task', 'error');
+      showFeedback('error', 'Failed to add task');
     }
   };
 
@@ -275,6 +278,16 @@ export default function AccountsList() {
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
+
       <div className="card">
         {/* Header and filters ... same as before */}
         <div className="card-header border-0 pt-6">
@@ -400,10 +413,10 @@ export default function AccountsList() {
             </div>
 
             <div className="d-flex justify-content-center gap-2 mb-5">
-              <button className="btn btn-primary btn-sm" onClick={() => openEditModal(selectedAccount)}>Edit</button>
-              <button className="btn btn-light btn-sm" onClick={() => openInteractionModal(selectedAccount)}>Add Interaction</button>
-              <button className="btn btn-light btn-sm" onClick={() => openTaskModal(selectedAccount)}>Add Task</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => handleDelete(selectedAccount)}>Delete</button>
+              <button className="btn btn-primary btn-sm" onClick={() => openEditModal(selectedAccount!)}>Edit</button>
+              <button className="btn btn-light btn-sm" onClick={() => openInteractionModal(selectedAccount!)}>Add Interaction</button>
+              <button className="btn btn-light btn-sm" onClick={() => openTaskModal(selectedAccount!)}>Add Task</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => handleDelete(selectedAccount!)}>Delete</button>
             </div>
 
             <div className="mb-5">
@@ -636,6 +649,23 @@ export default function AccountsList() {
         <div className="fv-row mb-5">
           <label className="form-label">Deadline</label>
           <input type="date" className="form-control" value={formData.deadline} onChange={e => setFormData({ ...formData, deadline: e.target.value })} />
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirm Deletion"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={handleConfirmDelete}>Delete</button>
+          </div>
+        }
+      >
+        <div className="p-2 text-start">
+          <p>Are you sure you want to delete <strong>{selectedAccount?.fields['Account Name']}</strong>? This action cannot be undone.</p>
         </div>
       </Modal>
     </>

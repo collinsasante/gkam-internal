@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
 import { auth } from '../../services/firebase.config';
 
-declare const Swal: any;
+import Modal from '../Common/Modal';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -16,6 +16,13 @@ export default function ResetPassword() {
   const [email, setEmail] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   const oobCode = searchParams.get('oobCode');
 
@@ -53,31 +60,23 @@ export default function ResetPassword() {
     e.preventDefault();
 
     if (!oobCode) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'Invalid reset link', 'error');
-      }
+      showFeedback('error', 'Invalid reset link');
       return;
     }
 
     // Validation
     if (!newPassword) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'Please enter a new password', 'error');
-      }
+      showFeedback('error', 'Please enter a new password');
       return;
     }
 
     if (newPassword.length < 6) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'Password must be at least 6 characters long', 'error');
-      }
+      showFeedback('error', 'Password must be at least 6 characters long');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'Passwords do not match', 'error');
-      }
+      showFeedback('error', 'Passwords do not match');
       return;
     }
 
@@ -86,22 +85,7 @@ export default function ResetPassword() {
     try {
       // Confirm the password reset with the new password
       await confirmPasswordReset(auth, oobCode, newPassword);
-
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Success!',
-          text: 'Your password has been reset successfully. You can now sign in with your new password.',
-          icon: 'success',
-          confirmButtonText: 'Go to Sign In',
-          customClass: {
-            confirmButton: 'btn btn-primary',
-          },
-        }).then(() => {
-          navigate('/login');
-        });
-      } else {
-        navigate('/login');
-      }
+      setIsSuccessModalOpen(true);
     } catch (err: any) {
       let errorMessage = 'Failed to reset password. Please try again.';
 
@@ -113,9 +97,7 @@ export default function ResetPassword() {
         errorMessage = 'This password reset link has expired. Please request a new one.';
       }
 
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', errorMessage, 'error');
-      }
+      showFeedback('error', errorMessage);
       setLoading(false);
     }
   };
@@ -165,95 +147,122 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="auth-page d-flex flex-column flex-root">
-      <div className="d-flex flex-column flex-center flex-column-fluid">
-        <div className="auth-form-container">
-          <form onSubmit={handleSubmit} className="form w-100">
-            <div className="text-center mb-8">
-              <h1 className="text-gray-900 fw-bolder mb-3">Reset Password</h1>
-              <div className="text-gray-500 fw-semibold fs-6">
-                Enter a new password for {email}
+    <>
+      <div className="auth-page d-flex flex-column flex-root">
+        <div className="d-flex flex-column flex-center flex-column-fluid">
+          <div className="auth-form-container">
+            <form onSubmit={handleSubmit} className="form w-100">
+              <div className="text-center mb-8">
+                <h1 className="text-gray-900 fw-bolder mb-3">Reset Password</h1>
+                <div className="text-gray-500 fw-semibold fs-6">
+                  Enter a new password for {email}
+                </div>
               </div>
-            </div>
 
-            <div className="mb-4">
-              <label className="form-label">New Password</label>
-              <div className="position-relative">
-                <input
-                  className="form-control"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  disabled={loading}
-                  autoComplete="new-password"
-                />
+              <div className="mb-4">
+                <label className="form-label">New Password</label>
+                <div className="position-relative">
+                  <input
+                    className="form-control"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={loading}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-icon position-absolute top-50 end-0 translate-middle-y me-2"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ background: 'none', border: 'none' }}
+                  >
+                    <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'} fs-4`}></i>
+                  </button>
+                </div>
+                <div className="form-text">Password must be at least 6 characters</div>
+              </div>
+
+              <div className="mb-8">
+                <label className="form-label">Confirm New Password</label>
+                <div className="position-relative">
+                  <input
+                    className="form-control"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={loading}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-icon position-absolute top-50 end-0 translate-middle-y me-2"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ background: 'none', border: 'none' }}
+                  >
+                    <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'} fs-4`}></i>
+                  </button>
+                </div>
+              </div>
+
+              <div className="d-grid mb-4">
                 <button
-                  type="button"
-                  className="btn btn-sm btn-icon position-absolute top-50 end-0 translate-middle-y me-2"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{ background: 'none', border: 'none' }}
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
                 >
-                  <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'} fs-4`}></i>
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Resetting Password...
+                    </>
+                  ) : (
+                    'Reset Password'
+                  )}
                 </button>
               </div>
-              <div className="form-text">Password must be at least 6 characters</div>
-            </div>
 
-            <div className="mb-8">
-              <label className="form-label">Confirm New Password</label>
-              <div className="position-relative">
-                <input
-                  className="form-control"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                  autoComplete="new-password"
-                />
+              <div className="text-center">
                 <button
                   type="button"
-                  className="btn btn-sm btn-icon position-absolute top-50 end-0 translate-middle-y me-2"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={{ background: 'none', border: 'none' }}
+                  className="link-primary"
+                  onClick={() => navigate('/login')}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  disabled={loading}
                 >
-                  <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'} fs-4`}></i>
+                  Back to Sign In
                 </button>
               </div>
-            </div>
-
-            <div className="d-grid mb-4">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Resetting Password...
-                  </>
-                ) : (
-                  'Reset Password'
-                )}
-              </button>
-            </div>
-
-            <div className="text-center">
-              <button
-                type="button"
-                className="link-primary"
-                onClick={() => navigate('/login')}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                disabled={loading}
-              >
-                Back to Sign In
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        onClose={() => navigate('/login')}
+        title="Success!"
+        footer={
+          <button className="btn btn-primary" onClick={() => navigate('/login')}>Go to Sign In</button>
+        }
+      >
+        <div className="p-4 text-center">
+          <i className="bi bi-check-circle text-success fs-3x d-block mb-4"></i>
+          <p className="fs-5 text-gray-800">Your password has been reset successfully. You can now sign in with your new password.</p>
+        </div>
+      </Modal>
+
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
+    </>
   );
 }

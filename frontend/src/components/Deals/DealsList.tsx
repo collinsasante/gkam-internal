@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { dealsService, teamMemberService } from '../../services/airtable.service';
 import type { Deal, TeamMember } from '../../types/airtable.types';
 import SkeletonLoader from '../Common/SkeletonLoader';
-
-declare const Swal: any;
+import Modal from '../Common/Modal';
 
 type DealStage = 'New' | 'Discovery' | 'Prospective' | 'Invoice' | 'Won' | 'Lost';
 
@@ -13,6 +12,28 @@ export default function DealsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Modal States
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+
+  // Form State
+  const [editForm, setEditForm] = useState({
+    dealTitle: '',
+    dealValue: '',
+    probability: '',
+    closeDate: ''
+  });
+
+  // Status/Feedback State
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   useEffect(() => {
     loadData();
@@ -37,304 +58,77 @@ export default function DealsList() {
   };
 
   const handleUpdateStage = async (deal: Deal, newStage: DealStage) => {
-    if (typeof Swal === 'undefined') return;
-
     try {
       await dealsService.update(deal.id, { Stage: newStage });
-      await Swal.fire('Updated!', `Deal moved to ${newStage}`, 'success');
+      showFeedback('success', `Deal moved to ${newStage}`);
       loadData();
     } catch (error) {
-      Swal.fire('Error', 'Failed to update deal stage', 'error');
+      showFeedback('error', 'Failed to update deal stage');
       console.error(error);
     }
   };
 
-  const handleCardClick = async (deal: Deal) => {
-    if (typeof Swal === 'undefined') return;
+  const handleCardClick = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setIsDetailsModalOpen(true);
+  };
 
-    const result = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-chart-line-up fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-        </i>
-        <span>${(deal.fields as any)['Deal Title'] || 'Deal Details'}</span>
-      </div>`,
-      html: `
-        <div class="text-start" style="max-height: 600px; overflow-y: auto; padding: 0 10px;">
-          <!-- Deal Information -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-primary">
-              <h6 class="card-title mb-0 text-primary">
-                <i class="ki-duotone ki-dollar fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Deal Information
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Stage</label>
-                  <div>
-                    <span class="badge fs-6" style="background-color: ${getColumnColor(deal.fields['Stage'] as DealStage)}; color: white;">
-                      ${deal.fields['Stage'] || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Deal Value</label>
-                  <div class="text-gray-800 fw-bold">${formatCurrency((deal.fields as any)['Deal Value'])}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Probability</label>
-                  <div class="text-gray-800 fw-bold">${(deal.fields as any)['Close Probability '] || 0}%</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Expected Close Date</label>
-                  <div class="text-gray-800">${(deal.fields as any)['Expected Close Date'] ? new Date((deal.fields as any)['Expected Close Date']).toLocaleDateString() : 'N/A'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Contact Information -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-info">
-              <h6 class="card-title mb-0 text-info">
-                <i class="ki-duotone ki-profile-circle fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                </i>
-                Contact Information
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Owner</label>
-                  <div class="text-gray-800 fw-bold">${getOwnerName((deal.fields as any)['Owner(Team Member)'])}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Lead Name</label>
-                  <div class="text-gray-800">${(deal.fields as any)['Name of Lead'] || 'N/A'}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Phone</label>
-                  <div class="text-gray-800">${(deal.fields as any)['Phone Number'] || 'N/A'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          ${(deal.fields as any)['Notes from Initial Conversation'] ? `
-          <!-- Notes -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-warning">
-              <h6 class="card-title mb-0 text-warning">
-                <i class="ki-duotone ki-note-2 fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Notes
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="text-gray-800">${(deal.fields as any)['Notes from Initial Conversation']}</div>
-            </div>
-          </div>
-          ` : ''}
-
-          <!-- Activity Summary -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light-success">
-              <h6 class="card-title mb-0 text-success">
-                <i class="ki-duotone ki-chart-simple fs-3 me-2">
-                  <span class="path1"></span>
-                  <span class="path2"></span>
-                  <span class="path3"></span>
-                  <span class="path4"></span>
-                </i>
-                Activity Summary
-              </h6>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Activities</label>
-                  <div class="text-gray-800 fw-bold">${Array.isArray(deal.fields['Activities']) ? deal.fields['Activities'].length : 0}</div>
-                </div>
-                <div class="col-6">
-                  <label class="text-muted fs-7 fw-semibold">Created On</label>
-                  <div class="text-gray-800">${(deal.fields as any)['Created On'] ? new Date((deal.fields as any)['Created On']).toLocaleDateString() : 'N/A'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      showDenyButton: true,
-      confirmButtonText: 'Edit',
-      denyButtonText: 'Delete',
-      cancelButtonText: 'Close',
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: 'btn btn-primary',
-        denyButton: 'btn btn-danger',
-        cancelButton: 'btn btn-light me-3',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      },
-      width: 900,
+  const handleOpenEditModal = () => {
+    if (!selectedDeal) return;
+    setEditForm({
+      dealTitle: (selectedDeal.fields as any)['Deal Title'] || '',
+      dealValue: ((selectedDeal.fields as any)['Deal Value'] || '').toString(),
+      probability: ((selectedDeal.fields as any)['Close Probability '] || '').toString(),
+      closeDate: (selectedDeal.fields as any)['Expected Close Date'] ? new Date((selectedDeal.fields as any)['Expected Close Date']).toISOString().split('T')[0] : ''
     });
+    setIsEditModalOpen(true);
+    setIsDetailsModalOpen(false);
+  };
 
-    if (result.isConfirmed) {
-      handleEditDeal(deal);
-    } else if (result.isDenied) {
-      handleDeleteDeal(deal);
+  const handleEditSubmit = async () => {
+    if (!selectedDeal || !editForm.dealTitle) {
+      showFeedback('error', 'Deal title is required');
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        'Deal Title': editForm.dealTitle,
+      };
+
+      if (editForm.dealValue) updateData['Deal Value'] = parseFloat(editForm.dealValue);
+      if (editForm.probability) updateData['Close Probability '] = parseInt(editForm.probability);
+      if (editForm.closeDate) updateData['Expected Close Date'] = editForm.closeDate;
+
+      await dealsService.update(selectedDeal.id, updateData);
+      showFeedback('success', 'Deal has been updated successfully.');
+      setIsEditModalOpen(false);
+      loadData();
+    } catch (error) {
+      showFeedback('error', 'Failed to update deal');
+      console.error(error);
     }
   };
 
-  const handleEditDeal = async (deal: Deal) => {
-    if (typeof Swal === 'undefined') return;
+  const handleOpenDeleteModal = () => {
+    setIsDeleteModalOpen(true);
+    setIsDetailsModalOpen(false);
+  };
 
-    const { value: formValues } = await Swal.fire({
-      title: `<div class="d-flex align-items-center">
-        <i class="ki-duotone ki-pencil fs-2x text-primary me-3">
-          <span class="path1"></span>
-          <span class="path2"></span>
-        </i>
-        <span>Edit Deal</span>
-      </div>`,
-      html: `
-        <div class="text-start p-4">
-          <div class="mb-5">
-            <label class="form-label required fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-chart-line-up fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Deal Title
-            </label>
-            <input id="dealTitle" class="form-control form-control-solid" value="${(deal.fields as any)['Deal Title'] || ''}" placeholder="Enter deal title" required>
-          </div>
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-dollar fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-              </i>
-              Deal Value
-            </label>
-            <input id="dealValue" type="number" class="form-control form-control-solid" value="${(deal.fields as any)['Deal Value'] || ''}" placeholder="0">
-          </div>
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-percentage fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Probability (%)
-            </label>
-            <input id="probability" type="number" min="0" max="100" class="form-control form-control-solid" value="${(deal.fields as any)['Close Probability '] || ''}" placeholder="0-100">
-          </div>
-          <div class="mb-5">
-            <label class="form-label fw-bold fs-6 mb-2">
-              <i class="ki-duotone ki-calendar fs-4 me-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-              </i>
-              Expected Close Date
-            </label>
-            <input id="closeDate" type="date" class="form-control form-control-solid" value="${(deal.fields as any)['Expected Close Date'] ? new Date((deal.fields as any)['Expected Close Date']).toISOString().split('T')[0] : ''}">
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Save Changes',
-      cancelButtonText: 'Cancel',
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: 'btn btn-primary',
-        cancelButton: 'btn btn-light me-3',
-        popup: 'rounded',
-        title: 'fs-4',
-        htmlContainer: 'p-0'
-      },
-      width: 600,
-      preConfirm: () => {
-        const dealTitle = (document.getElementById('dealTitle') as HTMLInputElement).value;
-        const dealValue = (document.getElementById('dealValue') as HTMLInputElement).value;
-        const probability = (document.getElementById('probability') as HTMLInputElement).value;
-        const closeDate = (document.getElementById('closeDate') as HTMLInputElement).value;
-
-        if (!dealTitle) {
-          Swal.showValidationMessage('Deal title is required');
-          return false;
-        }
-
-        return { dealTitle, dealValue, probability, closeDate };
-      },
-    });
-
-    if (formValues) {
-      try {
-        const updateData: any = {
-          'Deal Title': formValues.dealTitle,
-        };
-
-        if (formValues.dealValue) {
-          updateData['Deal Value'] = parseFloat(formValues.dealValue);
-        }
-        if (formValues.probability) {
-          updateData['Close Probability '] = parseInt(formValues.probability);
-        }
-        if (formValues.closeDate) {
-          updateData['Expected Close Date'] = formValues.closeDate;
-        }
-
-        await dealsService.update(deal.id, updateData);
-        await Swal.fire('Updated!', 'Deal has been updated successfully.', 'success');
-        loadData();
-      } catch (error) {
-        Swal.fire('Error', 'Failed to update deal', 'error');
-        console.error(error);
-      }
+  const handleConfirmDelete = async () => {
+    if (!selectedDeal) return;
+    try {
+      await dealsService.delete(selectedDeal.id);
+      showFeedback('success', 'Deal has been deleted.');
+      setIsDeleteModalOpen(false);
+      loadData();
+    } catch (error) {
+      showFeedback('error', 'Failed to delete deal');
+      console.error(error);
     }
   };
 
-  const handleDeleteDeal = async (deal: Deal) => {
-    if (typeof Swal === 'undefined') return;
 
-    const result = await Swal.fire({
-      title: 'Delete Deal?',
-      text: `Are you sure you want to delete "${(deal.fields as any)['Deal Title']}"? This action cannot be undone.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#f1416c',
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await dealsService.delete(deal.id);
-        await Swal.fire('Deleted!', 'Deal has been deleted.', 'success');
-        loadData();
-      } catch (error) {
-        Swal.fire('Error', 'Failed to delete deal', 'error');
-        console.error(error);
-      }
-    }
-  };
 
   const getOwnerName = (ownerIds?: string[]) => {
     if (!ownerIds || ownerIds.length === 0) return 'Unassigned';
@@ -432,6 +226,16 @@ export default function DealsList() {
 
   return (
     <div>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="d-flex align-items-center justify-content-between mb-6">
         <div className="d-flex align-items-center gap-3">
@@ -522,10 +326,9 @@ export default function DealsList() {
                             </div>
                             <div className="progress h-5px">
                               <div
-                                className={`progress-bar ${
-                                  ((deal.fields as any)['Close Probability '] || 0) >= 75 ? 'bg-success' :
+                                className={`progress-bar ${((deal.fields as any)['Close Probability '] || 0) >= 75 ? 'bg-success' :
                                   ((deal.fields as any)['Close Probability '] || 0) >= 50 ? 'bg-warning' : 'bg-danger'
-                                }`}
+                                  }`}
                                 style={{ width: `${(deal.fields as any)['Close Probability ']}%` }}
                               ></div>
                             </div>
@@ -647,6 +450,210 @@ export default function DealsList() {
           );
         })}
       </div>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={selectedDeal ? ((selectedDeal.fields as any)['Deal Title'] || 'Deal Details') : 'Deal Details'}
+        size="lg"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-danger" onClick={handleOpenDeleteModal}>Delete</button>
+            <button className="btn btn-primary" onClick={handleOpenEditModal}>Edit</button>
+            <button className="btn btn-light" onClick={() => setIsDetailsModalOpen(false)}>Close</button>
+          </div>
+        }
+      >
+        {selectedDeal && (
+          <div className="text-start p-2" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            {/* Deal Information */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-header bg-light-primary py-3 min-h-auto">
+                <h6 className="card-title mb-0 text-primary">
+                  <i className="ki-duotone ki-dollar fs-3 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                  </i>
+                  Deal Information
+                </h6>
+              </div>
+              <div className="card-body p-4">
+                <div className="row g-4">
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Stage</label>
+                    <span className="badge fs-7 mt-1" style={{ backgroundColor: getColumnColor(selectedDeal.fields['Stage'] as DealStage), color: 'white' }}>
+                      {selectedDeal.fields['Stage'] || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Deal Value</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">{formatCurrency((selectedDeal.fields as any)['Deal Value'])}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Probability</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">{(selectedDeal.fields as any)['Close Probability '] || 0}%</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Expected Close Date</label>
+                    <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Expected Close Date'] ? new Date((selectedDeal.fields as any)['Expected Close Date']).toLocaleDateString() : 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-header bg-light-info py-3 min-h-auto">
+                <h6 className="card-title mb-0 text-info">
+                  <i className="ki-duotone ki-profile-circle fs-3 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                  </i>
+                  Contact Information
+                </h6>
+              </div>
+              <div className="card-body p-4">
+                <div className="row g-4">
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Owner</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">{getOwnerName((selectedDeal.fields as any)['Owner(Team Member)'])}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Lead Name</label>
+                    <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Name of Lead'] || 'N/A'}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
+                    <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Phone Number'] || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {(selectedDeal.fields as any)['Notes from Initial Conversation'] && (
+              <div className="card shadow-sm mb-4">
+                <div className="card-header bg-light-warning py-3 min-h-auto">
+                  <h6 className="card-title mb-0 text-warning">
+                    <i className="ki-duotone ki-note-2 fs-3 me-2">
+                      <span className="path1"></span>
+                      <span className="path2"></span>
+                      <span className="path3"></span>
+                      <span className="path4"></span>
+                    </i>
+                    Notes
+                  </h6>
+                </div>
+                <div className="card-body p-4">
+                  <div className="text-gray-800">{(selectedDeal.fields as any)['Notes from Initial Conversation']}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Activity Summary */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-header bg-light-success py-3 min-h-auto">
+                <h6 className="card-title mb-0 text-success">
+                  <i className="ki-duotone ki-chart-simple fs-3 me-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                    <span className="path3"></span>
+                    <span className="path4"></span>
+                  </i>
+                  Activity Summary
+                </h6>
+              </div>
+              <div className="card-body p-4">
+                <div className="row g-4">
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Activities</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">{Array.isArray(selectedDeal.fields['Activities']) ? selectedDeal.fields['Activities'].length : 0}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Created On</label>
+                    <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Created On'] ? new Date((selectedDeal.fields as any)['Created On']).toLocaleDateString() : 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Deal"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleEditSubmit}>Save Changes</button>
+          </div>
+        }
+      >
+        <div className="text-start p-2">
+          <div className="mb-5">
+            <label className="form-label required fw-bold fs-6 mb-2">Deal Title</label>
+            <input
+              className="form-control form-control-solid"
+              value={editForm.dealTitle}
+              onChange={(e) => setEditForm({ ...editForm, dealTitle: e.target.value })}
+              placeholder="Enter deal title"
+            />
+          </div>
+          <div className="mb-5">
+            <label className="form-label fw-bold fs-6 mb-2">Deal Value</label>
+            <input
+              type="number"
+              className="form-control form-control-solid"
+              value={editForm.dealValue}
+              onChange={(e) => setEditForm({ ...editForm, dealValue: e.target.value })}
+              placeholder="0"
+            />
+          </div>
+          <div className="mb-5">
+            <label className="form-label fw-bold fs-6 mb-2">Probability (%)</label>
+            <input
+              type="number"
+              className="form-control form-control-solid"
+              value={editForm.probability}
+              onChange={(e) => setEditForm({ ...editForm, probability: e.target.value })}
+              min="0" max="100"
+              placeholder="0-100"
+            />
+          </div>
+          <div className="mb-5">
+            <label className="form-label fw-bold fs-6 mb-2">Expected Close Date</label>
+            <input
+              type="date"
+              className="form-control form-control-solid"
+              value={editForm.closeDate}
+              onChange={(e) => setEditForm({ ...editForm, closeDate: e.target.value })}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirm Deletion"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={handleConfirmDelete}>Delete</button>
+          </div>
+        }
+      >
+        <div className="p-2 text-start">
+          <p>Are you sure you want to delete this deal? This action cannot be undone.</p>
+        </div>
+      </Modal>
     </div>
   );
 }

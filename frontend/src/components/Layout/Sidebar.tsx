@@ -6,12 +6,11 @@ interface SidebarProps {
   onViewChange: (view: string) => void;
   currentUser: AuthUser | null;
   isOpen?: boolean;
-  onClose?: () => void;
 }
 
 import logoRed from '../logo_red.png';
 
-export default function Sidebar({ activeView, onViewChange, currentUser, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ activeView, onViewChange, currentUser, isOpen }: SidebarProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Overview': true,

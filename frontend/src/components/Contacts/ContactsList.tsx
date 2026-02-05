@@ -3,7 +3,7 @@ import { contactService, activityService, dealsService, teamMemberService } from
 import type { Contact, Deal, TeamMember, Activity } from '../../types/airtable.types';
 import Modal from '../Common/Modal';
 
-declare const Swal: any;
+
 
 export default function ContactsList() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -21,6 +21,14 @@ export default function ContactsList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
@@ -68,7 +76,7 @@ export default function ContactsList() {
 
   const handleCreateSubmit = async () => {
     if (!formData.phone) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Phone number is required' });
+      showFeedback('error', 'Phone number is required');
       return;
     }
 
@@ -82,12 +90,12 @@ export default function ContactsList() {
       if (formData.createdBy) contactData['Created by'] = [formData.createdBy];
 
       await contactService.create(contactData as Contact['fields']);
-      Swal.fire('Created!', 'Contact has been created successfully.', 'success');
+      showFeedback('success', 'Contact has been created successfully.');
       loadContacts();
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error(error);
-      Swal.fire('Error', 'Failed to create contact', 'error');
+      showFeedback('error', 'Failed to create contact');
     }
   };
 
@@ -110,7 +118,7 @@ export default function ContactsList() {
   const handleEditSubmit = async () => {
     if (!selectedContact) return;
     if (!formData.phone) {
-      Swal.fire('Error', 'Phone number is required', 'error');
+      showFeedback('error', 'Phone number is required');
       return;
     }
 
@@ -121,37 +129,30 @@ export default function ContactsList() {
         Email: formData.email || undefined,
       });
 
-      Swal.fire('Updated!', 'Contact has been updated successfully.', 'success');
+      showFeedback('success', 'Contact has been updated successfully.');
       loadContacts();
       setIsEditModalOpen(false);
     } catch (error) {
       console.error(error);
-      Swal.fire('Error', 'Failed to update contact', 'error');
+      showFeedback('error', 'Failed to update contact');
     }
   };
 
-  const handleDeleteContact = async (contact: Contact) => {
+  const handleDeleteContact = (contact: Contact) => {
+    setSelectedContact(contact);
     setIsViewModalOpen(false);
+    setIsDeleteModalOpen(true);
+  };
 
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      html: `Do you want to delete contact <strong>${contact.fields['Name'] || contact.fields['Phone']}</strong>?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#f1416c',
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await contactService.delete(contact.id);
-        Swal.fire('Deleted!', 'Contact has been deleted.', 'success');
-        loadContacts();
-      } catch (error) {
-        console.error(error);
-        Swal.fire('Error', 'Failed to delete contact', 'error');
-      }
+  const handleConfirmDelete = async () => {
+    if (!selectedContact) return;
+    try {
+      await contactService.delete(selectedContact.id);
+      showFeedback('success', 'Contact has been deleted.');
+      loadContacts();
+      setIsDeleteModalOpen(false);
+    } catch (err) {
+      showFeedback('error', 'Failed to delete contact');
     }
   };
 
@@ -173,7 +174,7 @@ export default function ContactsList() {
   const handleActivitySubmit = async () => {
     if (!selectedContact) return;
     if (!formData.activity || !formData.activityType) {
-      Swal.fire('Error', 'Activity description and type are required', 'error');
+      showFeedback('error', 'Activity description and type are required');
       return;
     }
 
@@ -202,11 +203,12 @@ export default function ContactsList() {
       }
 
       await activityService.create(activityData as Activity['fields']);
-      Swal.fire('Added!', 'Activity has been added successfully.', 'success');
+      showFeedback('success', 'Activity has been added.');
       setIsActivityModalOpen(false);
+      loadContacts();
     } catch (error) {
       console.error(error);
-      Swal.fire('Error', 'Failed to add activity', 'error');
+      showFeedback('error', 'Failed to add activity');
     }
   };
 
@@ -236,11 +238,22 @@ export default function ContactsList() {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <>
+        {/* Feedback Alert */}
+        {feedback.type && (
+          <div
+            className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+            style={{ zIndex: 9999, minWidth: '300px' }}
+          >
+            {feedback.message}
+          </div>
+        )}
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -257,6 +270,15 @@ export default function ContactsList() {
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
       <div className="card">
         <div className="card-header border-0 pt-6">
           <div className="card-title">
@@ -757,6 +779,23 @@ export default function ContactsList() {
             value={formData.activitySummary}
             onChange={(e) => setFormData({ ...formData, activitySummary: e.target.value })}
           ></textarea>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirm Deletion"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={handleConfirmDelete}>Delete</button>
+          </div>
+        }
+      >
+        <div className="p-2 text-start">
+          <p>Are you sure you want to delete contact <strong>{selectedContact?.fields['Name'] || selectedContact?.fields['Phone']}</strong>? This action cannot be undone.</p>
         </div>
       </Modal>
     </>

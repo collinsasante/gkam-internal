@@ -3,7 +3,7 @@ import { authService } from '../../services/auth.service';
 import logoRed from '../logo_red.png';
 import Modal from '../Common/Modal';
 
-declare const Swal: any;
+
 
 interface RegisterProps {
   onRegister: () => void;
@@ -20,43 +20,28 @@ export default function Register({ onRegister, onBackToLogin }: RegisterProps) {
   // Modal States
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password || !confirmPassword || !fullName) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Missing Information',
-          text: 'Please fill in all fields',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        });
-      }
+      showFeedback('error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Password Mismatch',
-          text: 'Passwords do not match. Please try again.',
-          icon: 'error',
-          confirmButtonText: 'OK',
-        });
-      }
+      showFeedback('error', 'Passwords do not match. Please try again.');
       return;
     }
 
     if (password.length < 6) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Weak Password',
-          text: 'Password must be at least 6 characters long',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        });
-      }
+      showFeedback('error', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -71,14 +56,7 @@ export default function Register({ onRegister, onBackToLogin }: RegisterProps) {
         setIsSuccessModalOpen(true);
       }
     } catch (error: any) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Registration Failed',
-          text: error.message || 'Unable to create account. Please try again.',
-          icon: 'error',
-          confirmButtonText: 'Try Again',
-        });
-      }
+      showFeedback('error', error.message || 'Unable to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -96,6 +74,15 @@ export default function Register({ onRegister, onBackToLogin }: RegisterProps) {
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
       <div className="auth-page d-flex align-items-center justify-content-center">
         <div className="auth-form-container">
           {/* Logo */}

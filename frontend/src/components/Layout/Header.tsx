@@ -4,7 +4,7 @@ import { notificationService } from '../../services/notification.service';
 import type { Notification } from '../../services/notification.service';
 import Modal from '../Common/Modal';
 
-declare const Swal: any;
+
 
 interface HeaderProps {
   currentUser: AuthUser | null;
@@ -23,6 +23,13 @@ export default function Header({ currentUser, onLogout, onToggleSidebar }: Heade
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   // Form States
   const [settingsForm, setSettingsForm] = useState({
@@ -81,16 +88,7 @@ export default function Header({ currentUser, onLogout, onToggleSidebar }: Heade
     // Save settings logic here (e.g., save to local storage or API)
     console.log('Settings saved:', settingsForm);
     setIsSettingsOpen(false);
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        icon: 'success',
-        title: 'Settings Saved',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1500
-      });
-    }
+    showFeedback('success', 'Settings saved successfully');
   };
 
   const handleProfileClick = () => {
@@ -108,14 +106,14 @@ export default function Header({ currentUser, onLogout, onToggleSidebar }: Heade
 
   const handleEditProfileSubmit = () => {
     if (!profileForm.name) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Name is required', 'error');
+      showFeedback('error', 'Name is required');
       return;
     }
     // Update profile logic here
     console.log('Profile updated:', profileForm);
     setIsEditProfileOpen(false);
     setIsProfileOpen(true);
-    if (typeof Swal !== 'undefined') Swal.fire('Success', 'Profile updated', 'success');
+    showFeedback('success', 'Profile updated');
   };
 
   const handleChangePasswordClick = () => {
@@ -126,15 +124,15 @@ export default function Header({ currentUser, onLogout, onToggleSidebar }: Heade
 
   const handleChangePasswordSubmit = () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'All fields are required', 'error');
+      showFeedback('error', 'All fields are required');
       return;
     }
     if (passwordForm.newPassword.length < 6) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'New password must be at least 6 characters', 'error');
+      showFeedback('error', 'New password must be at least 6 characters');
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Passwords do not match', 'error');
+      showFeedback('error', 'Passwords do not match');
       return;
     }
 
@@ -142,7 +140,7 @@ export default function Header({ currentUser, onLogout, onToggleSidebar }: Heade
     console.log('Password changed');
     setIsChangePasswordOpen(false);
     setIsProfileOpen(true);
-    if (typeof Swal !== 'undefined') Swal.fire('Success', 'Password changed successfully', 'success');
+    showFeedback('success', 'Password changed successfully');
   };
 
   const handleLogoutClick = () => {
@@ -152,6 +150,15 @@ export default function Header({ currentUser, onLogout, onToggleSidebar }: Heade
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
       <div id="kt_app_header" className="app-header">
         <div className="app-container container-fluid d-flex align-items-stretch justify-content-between">
           <div className="d-flex align-items-center d-lg-none ms-n3 me-1 me-md-2" title="Show sidebar menu">

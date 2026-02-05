@@ -5,7 +5,7 @@ import type { Lead, TeamMember } from '../../types/airtable.types';
 import SkeletonLoader from '../Common/SkeletonLoader';
 import Modal from '../Common/Modal';
 
-declare const Swal: any;
+
 
 type LeadStatus = 'New Lead' | 'Attempted to Contact' | 'Contacted' | 'Qualified' | 'Unqualified';
 
@@ -29,6 +29,19 @@ export default function LeadsList() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
 
+  // Assignment Modal State
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignLeadId, setAssignLeadId] = useState<string | null>(null);
+  const [tempOwnerId, setTempOwnerId] = useState<string>('');
+
+  // Status/Feedback State
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
+
   const handleDeleteClick = (leadId: string) => {
     setLeadToDelete(leadId);
     setShowDeleteConfirm(true);
@@ -41,14 +54,11 @@ export default function LeadsList() {
         loadData();
         setShowDeleteConfirm(false);
         setLeadToDelete(null);
-        if (typeof Swal !== 'undefined') {
-          Swal.fire('Deleted!', 'Lead has been deleted.', 'success');
-        }
+        setIsDetailsModalOpen(false);
+        showFeedback('success', 'Lead has been deleted successfully.');
       } catch (error) {
         console.error(error);
-        if (typeof Swal !== 'undefined') {
-          Swal.fire('Error', 'Failed to delete lead', 'error');
-        }
+        showFeedback('error', 'Failed to delete lead.');
       }
     }
   };
@@ -87,42 +97,29 @@ export default function LeadsList() {
     try {
       await leadsService.update(leadId, { Status: newStatus });
       loadData();
+      showFeedback('success', 'Lead status updated.');
     } catch (error) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'Failed to update lead status', 'error');
-      }
       console.error(error);
+      showFeedback('error', 'Failed to update lead status.');
     }
   };
 
-  const handleAssignOwner = async (leadId: string, currentOwner?: string[]) => {
-    if (typeof Swal === 'undefined') return;
+  const handleAssignOwner = (leadId: string, currentOwner?: string[]) => {
+    setAssignLeadId(leadId);
+    setTempOwnerId(currentOwner && currentOwner[0] ? currentOwner[0] : '');
+    setIsAssignModalOpen(true);
+  };
 
-    const teamMemberOptions = teamMembers.reduce((acc, member) => {
-      acc[member.id] = member.fields['Name'] || 'Unknown';
-      return acc;
-    }, {} as Record<string, string>);
-
-    const { value: ownerId } = await Swal.fire({
-      title: 'Assign Lead Owner',
-      input: 'select',
-      inputOptions: {
-        '': '-- Select Owner --',
-        ...teamMemberOptions,
-      },
-      inputValue: currentOwner && currentOwner[0] ? currentOwner[0] : '',
-      showCancelButton: true,
-      confirmButtonText: 'Assign',
-    });
-
-    if (ownerId !== undefined && ownerId !== '') {
+  const handleConfirmAssign = async () => {
+    if (assignLeadId && tempOwnerId) {
       try {
-        await leadsService.update(leadId, { Owner: [ownerId] });
-        await Swal.fire('Assigned!', 'Lead owner has been assigned.', 'success');
+        await leadsService.update(assignLeadId, { Owner: [tempOwnerId] });
+        showFeedback('success', 'Lead owner has been assigned.');
+        setIsAssignModalOpen(false);
         loadData();
       } catch (error) {
-        Swal.fire('Error', 'Failed to assign lead owner', 'error');
         console.error(error);
+        showFeedback('error', 'Failed to assign lead owner.');
       }
     }
   };
@@ -144,33 +141,9 @@ export default function LeadsList() {
     setIsDetailsModalOpen(false); // Close details if open
   };
 
-  const handleDeleteLead = async (lead: Lead) => {
-    if (typeof Swal === 'undefined') return;
-
-    const contactName = Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-      ? lead.fields['Contact'][0]
-      : 'this lead';
-
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      html: `Do you want to delete <strong>${contactName}</strong> ?<br/><br/>This action cannot be undone.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#f1416c',
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await leadsService.delete(lead.id);
-        await Swal.fire('Deleted!', 'Lead has been deleted successfully.', 'success');
-        setIsDetailsModalOpen(false); // Close details modal if open
-        loadData();
-      } catch (error) {
-        Swal.fire('Error', 'Failed to delete lead', 'error');
-        console.error(error);
-      }
+  const handleDeleteLeadFromDetails = async () => {
+    if (selectedLead) {
+      handleDeleteClick(selectedLead.id);
     }
   };
 
@@ -194,28 +167,17 @@ export default function LeadsList() {
 
       setIsEditModalOpen(false);
       setIsDetailsModalOpen(true); // Re-open details
-
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          icon: 'success',
-          title: 'Updated!',
-          text: 'Lead has been updated successfully.',
-          timer: 1500,
-          showConfirmButton: false
-        });
-      }
+      showFeedback('success', 'Lead has been updated successfully.');
     } catch (error) {
       console.error(error);
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Error', 'Failed to update lead', 'error');
-      }
+      showFeedback('error', 'Failed to update lead.');
     }
   };
 
   const handleViewContact = async (lead: Lead) => {
     // Check if lead has a linked contact
     if (!lead.fields['Lead'] || !Array.isArray(lead.fields['Lead']) || lead.fields['Lead'].length === 0) {
-      if (typeof Swal !== 'undefined') Swal.fire('No Contact', 'This lead is not linked to a contact record.', 'info');
+      showFeedback('error', 'This lead is not linked to a contact record.');
       return;
     }
 
@@ -227,7 +189,7 @@ export default function LeadsList() {
       setIsContactModalOpen(true);
     } catch (error) {
       console.error('Error fetching contact:', error);
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to load contact details', 'error');
+      showFeedback('error', 'Failed to load contact details.');
     }
   };
 
@@ -306,6 +268,16 @@ export default function LeadsList() {
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
+
       <div className="card">
         <div className="card-header border-0 pt-6">
           <div className="card-title">
@@ -549,7 +521,7 @@ export default function LeadsList() {
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => handleDeleteLead(selectedLead)}
+                  onClick={handleDeleteLeadFromDetails}
                 >
                   Delete
                 </button>
@@ -690,7 +662,7 @@ export default function LeadsList() {
             <button
               type="button"
               className="btn btn-light"
-              onClick={() => setIsEditModalOpen(false)}
+              onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel
             </button>
@@ -706,6 +678,47 @@ export default function LeadsList() {
       >
         <div className="p-2">
           <p>Are you sure you want to delete this lead? This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Assign Owner Modal */}
+      <Modal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        title="Assign Lead Owner"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              className="btn btn-light"
+              onClick={() => setIsAssignModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConfirmAssign}
+            >
+              Assign
+            </button>
+          </div>
+        }
+      >
+        <div className="p-2">
+          <label className="form-label fw-bold fs-6 mb-2">Select Owner</label>
+          <select
+            className="form-select form-select-solid"
+            value={tempOwnerId}
+            onChange={(e) => setTempOwnerId(e.target.value)}
+          >
+            <option value="">-- Select Owner --</option>
+            {teamMembers.map(member => (
+              <option key={member.id} value={member.id}>
+                {member.fields['Name'] || 'Unknown'}
+              </option>
+            ))}
+          </select>
         </div>
       </Modal>
 

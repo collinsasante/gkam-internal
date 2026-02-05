@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { designFeedbackService } from '../../services/airtable.service';
 import type { DesignFeedback } from '../../types/airtable.types';
+import Modal from '../Common/Modal';
 
 declare const $: any;
-declare const Swal: any;
 
 export default function DesignFeedbackList() {
   const [feedback, setFeedback] = useState<DesignFeedback[]>([]);
@@ -11,6 +11,8 @@ export default function DesignFeedbackList() {
   const [error, setError] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const dataTableRef = useRef<any>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<DesignFeedback | null>(null);
 
   useEffect(() => {
     loadData();
@@ -72,52 +74,8 @@ export default function DesignFeedbackList() {
   };
 
   const handleViewDetails = (feedbackItem: DesignFeedback) => {
-    if (typeof Swal === 'undefined') return;
-
-    const annotatedDesigns = feedbackItem.fields['Annotated Design'] || [];
-    const designImages = annotatedDesigns.map((file) =>
-      `<div class="mb-3">
-        <img src="${file.url}" alt="${file.filename}" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;" />
-        <p class="text-muted fs-7">${file.filename}</p>
-      </div>`
-    ).join('');
-
-    Swal.fire({
-      title: `Feedback from ${feedbackItem.fields['Customer']}`,
-      html: `
-        <div class="text-start" style="max-height: 600px; overflow-y: auto;">
-          <div class="mb-4">
-            <p><strong>Order ID:</strong> ${feedbackItem.fields['Order ID'] || 'N/A'}</p>
-            <p><strong>Total Comments:</strong> <span class="badge badge-primary">${feedbackItem.fields['Total Comments'] || 0}</span></p>
-          </div>
-
-          ${feedbackItem.fields['Feedback'] ? `
-            <div class="alert alert-info">
-              <strong>Feedback:</strong><br/>
-              <p class="mb-0">${feedbackItem.fields['Feedback']}</p>
-            </div>
-          ` : ''}
-
-          ${designImages ? `
-            <div class="mt-4">
-              <h6>Annotated Designs:</h6>
-              ${designImages}
-            </div>
-          ` : '<p class="text-muted">No annotated designs attached</p>'}
-
-          <div class="mt-4">
-            <p><strong>Related Design Drafts:</strong> ${
-              (feedbackItem.fields['Related Design Drafts']?.length || 0) +
-              (feedbackItem.fields['Design Drafts 2']?.length || 0) +
-              (feedbackItem.fields['Design Drafts 3']?.length || 0) +
-              (feedbackItem.fields['Design Drafts 4']?.length || 0)
-            }</p>
-          </div>
-        </div>
-      `,
-      width: 900,
-      confirmButtonText: 'Close',
-    });
+    setSelectedFeedback(feedbackItem);
+    setIsDetailsModalOpen(true);
   };
 
   const getTotalDesignDrafts = (feedbackItem: DesignFeedback) => {
@@ -151,109 +109,163 @@ export default function DesignFeedbackList() {
   }
 
   return (
-    <div className="card">
-      <div className="card-header border-0 pt-6">
-        <div className="card-title">
-          <div className="d-flex align-items-center position-relative my-1">
-            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-              <span className="path1"></span>
-              <span className="path2"></span>
-            </i>
-            <input
-              type="text"
-              className="form-control form-control-solid w-250px ps-13"
-              placeholder="Search feedback..."
-              onChange={(e) => {
-                if (dataTableRef.current) {
-                  dataTableRef.current.search(e.target.value).draw();
-                }
-              }}
-            />
+    <>
+      <div className="card">
+        <div className="card-header border-0 pt-6">
+          <div className="card-title">
+            <div className="d-flex align-items-center position-relative my-1">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
+                <span className="path1"></span>
+                <span className="path2"></span>
+              </i>
+              <input
+                type="text"
+                className="form-control form-control-solid w-250px ps-13"
+                placeholder="Search feedback..."
+                onChange={(e) => {
+                  if (dataTableRef.current) {
+                    dataTableRef.current.search(e.target.value).draw();
+                  }
+                }}
+              />
+            </div>
           </div>
-        </div>
-        <div className="card-toolbar">
-          <div className="d-flex align-items-center gap-3">
-            <div className="badge badge-light-primary fs-6">
-              Total Feedback: {feedback.length}
+          <div className="card-toolbar">
+            <div className="d-flex align-items-center gap-3">
+              <div className="badge badge-light-primary fs-6">
+                Total Feedback: {feedback.length}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="card-body pt-0">
-        <table className="table align-middle table-row-dashed fs-6 gy-5" ref={tableRef}>
-          <thead>
-            <tr className="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-              <th className="min-w-150px">Customer</th>
-              <th className="min-w-100px">Order ID</th>
-              <th className="min-w-300px">Feedback</th>
-              <th className="min-w-100px">Comments</th>
-              <th className="min-w-100px">Attachments</th>
-              <th className="min-w-100px">Design Drafts</th>
-              <th className="text-end min-w-100px">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-600 fw-semibold">
-            {feedback.map((feedbackItem) => {
-              const totalDesignDrafts = getTotalDesignDrafts(feedbackItem);
-              const hasAttachments = feedbackItem.fields['Annotated Design'] && feedbackItem.fields['Annotated Design'].length > 0;
+        <div className="card-body pt-0">
+          <table className="table align-middle table-row-dashed fs-6 gy-5" ref={tableRef}>
+            <thead>
+              <tr className="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                <th className="min-w-150px">Customer</th>
+                <th className="min-w-100px">Order ID</th>
+                <th className="min-w-300px">Feedback</th>
+                <th className="min-w-100px">Comments</th>
+                <th className="min-w-100px">Attachments</th>
+                <th className="min-w-100px">Design Drafts</th>
+                <th className="text-end min-w-100px">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-600 fw-semibold">
+              {feedback.map((feedbackItem) => {
+                const totalDesignDrafts = getTotalDesignDrafts(feedbackItem);
+                const hasAttachments = feedbackItem.fields['Annotated Design'] && feedbackItem.fields['Annotated Design'].length > 0;
 
-              return (
-                <tr key={feedbackItem.id}>
-                  <td>
-                    <span className="text-gray-800 fw-bold">
-                      {feedbackItem.fields['Customer'] || 'N/A'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="text-gray-800">
-                      {feedbackItem.fields['Order ID'] || 'N/A'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="text-gray-800" style={{ maxWidth: '300px' }}>
-                      {feedbackItem.fields['Feedback'] && typeof feedbackItem.fields['Feedback'] === 'string' ? (
-                        feedbackItem.fields['Feedback'].length > 100
-                          ? `${feedbackItem.fields['Feedback'].substring(0, 100)}...`
-                          : feedbackItem.fields['Feedback']
-                      ) : (
-                        <span className="text-muted">No feedback provided</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`badge ${(feedbackItem.fields['Total Comments'] || 0) > 0 ? 'badge-primary' : 'badge-light'}`}>
-                      {feedbackItem.fields['Total Comments'] || 0}
-                    </span>
-                  </td>
-                  <td>
-                    {hasAttachments ? (
-                      <span className="badge badge-success">
-                        {feedbackItem.fields['Annotated Design']!.length} file(s)
+                return (
+                  <tr key={feedbackItem.id}>
+                    <td>
+                      <span className="text-gray-800 fw-bold">
+                        {feedbackItem.fields['Customer'] || 'N/A'}
                       </span>
-                    ) : (
-                      <span className="text-muted">None</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge ${totalDesignDrafts > 0 ? 'badge-info' : 'badge-light'}`}>
-                      {totalDesignDrafts} draft(s)
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <button
-                      className="btn btn-sm btn-light btn-active-light-primary"
-                      onClick={() => handleViewDetails(feedbackItem)}
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td>
+                      <span className="text-gray-800">
+                        {feedbackItem.fields['Order ID'] || 'N/A'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="text-gray-800" style={{ maxWidth: '300px' }}>
+                        {feedbackItem.fields['Feedback'] && typeof feedbackItem.fields['Feedback'] === 'string' ? (
+                          feedbackItem.fields['Feedback'].length > 100
+                            ? `${feedbackItem.fields['Feedback'].substring(0, 100)}...`
+                            : feedbackItem.fields['Feedback']
+                        ) : (
+                          <span className="text-muted">No feedback provided</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge ${(feedbackItem.fields['Total Comments'] || 0) > 0 ? 'badge-primary' : 'badge-light'}`}>
+                        {feedbackItem.fields['Total Comments'] || 0}
+                      </span>
+                    </td>
+                    <td>
+                      {hasAttachments ? (
+                        <span className="badge badge-success">
+                          {feedbackItem.fields['Annotated Design']!.length} file(s)
+                        </span>
+                      ) : (
+                        <span className="text-muted">None</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${totalDesignDrafts > 0 ? 'badge-info' : 'badge-light'}`}>
+                        {totalDesignDrafts} draft(s)
+                      </span>
+                    </td>
+                    <td className="text-end">
+                      <button
+                        className="btn btn-sm btn-light btn-active-light-primary"
+                        onClick={() => handleViewDetails(feedbackItem)}
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={selectedFeedback ? `Feedback from ${selectedFeedback.fields['Customer']}` : 'Feedback Details'}
+        size="lg"
+        footer={
+          <button type="button" className="btn btn-light" onClick={() => setIsDetailsModalOpen(false)}>Close</button>
+        }
+      >
+        {selectedFeedback && (
+          <div className="text-start" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            <div className="mb-4">
+              <p><strong>Order ID:</strong> {selectedFeedback.fields['Order ID'] || 'N/A'}</p>
+              <p><strong>Total Comments:</strong> <span className="badge badge-primary">{selectedFeedback.fields['Total Comments'] || 0}</span></p>
+            </div>
+
+            {selectedFeedback.fields['Feedback'] && (
+              <div className="alert alert-info border-0 bg-light-info">
+                <strong>Feedback:</strong><br />
+                <p className="mb-0 mt-2">{selectedFeedback.fields['Feedback']}</p>
+              </div>
+            )}
+
+            {selectedFeedback.fields['Annotated Design'] && selectedFeedback.fields['Annotated Design'].length > 0 ? (
+              <div className="mt-4">
+                <h6>Annotated Designs:</h6>
+                <div className="row g-5">
+                  {(selectedFeedback.fields['Annotated Design'] as any[]).map((file, idx) => (
+                    <div key={idx} className="col-12 mb-3">
+                      <img
+                        src={file.url}
+                        alt={file.filename}
+                        className="img-fluid rounded border shadow-sm mb-2"
+                        style={{ maxWidth: '100%' }}
+                      />
+                      <p className="text-muted fs-7">{file.filename}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted mt-4">No annotated designs attached</p>
+            )}
+
+            <div className="mt-4 pt-4 border-top">
+              <p><strong>Related Design Drafts:</strong> {getTotalDesignDrafts(selectedFeedback)}</p>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }

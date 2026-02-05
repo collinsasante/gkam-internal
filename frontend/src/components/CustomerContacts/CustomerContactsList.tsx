@@ -5,13 +5,12 @@ import Modal from '../Common/Modal';
 
 // Declare jQuery and DataTables types
 declare const $: any;
-declare const Swal: any;
+
 
 export default function CustomerContactsList() {
   const [contacts, setContacts] = useState<CustomerContact[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const dataTableRef = useRef<any>(null);
 
@@ -22,6 +21,14 @@ export default function CustomerContactsList() {
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [isAddInteractionModalOpen, setIsAddInteractionModalOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   const [selectedContact, setSelectedContact] = useState<CustomerContact | null>(null);
 
@@ -58,7 +65,7 @@ export default function CustomerContactsList() {
     title: '',
     description: '',
     priority: '',
-    status: 'To Do',
+    status: 'To do',
     dueDate: '',
     assignedTo: ''
   });
@@ -132,9 +139,7 @@ export default function CustomerContactsList() {
       ]);
       setContacts(contactsData);
       setTeamMembers(teamMembersData);
-      setError(null);
     } catch (err) {
-      setError('Failed to load customer contacts');
       console.error(err);
     } finally {
       setLoading(false);
@@ -153,7 +158,7 @@ export default function CustomerContactsList() {
 
   const handleCreateSubmit = async () => {
     if (!createForm.name || !createForm.phone || !createForm.source) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please fill in all required fields', 'error');
+      showFeedback('error', 'Please fill in all required fields');
       return;
     }
 
@@ -165,16 +170,16 @@ export default function CustomerContactsList() {
         'Customer ID': customerId,
         'Contact Name': createForm.name,
         'Phone': createForm.phone,
-        'Discovery Source': createForm.source,
+        'Discovery Source': createForm.source as any,
         'Created by': createForm.createdById ? [createForm.createdById] : undefined,
       });
 
       setIsCreateModalOpen(false);
       loadData();
-      if (typeof Swal !== 'undefined') Swal.fire('Success', 'Customer contact has been created', 'success');
+      showFeedback('success', 'Customer contact has been created');
     } catch (err) {
       console.error(err);
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create customer contact', 'error');
+      showFeedback('error', 'Failed to create customer contact');
     }
   };
 
@@ -199,7 +204,7 @@ export default function CustomerContactsList() {
     if (!selectedContact) return;
 
     if (!editForm.name || !editForm.phone || !editForm.source) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please fill in all required fields', 'error');
+      showFeedback('error', 'Please fill in all required fields');
       return;
     }
 
@@ -207,7 +212,7 @@ export default function CustomerContactsList() {
       await customerContactService.update(selectedContact.id, {
         'Contact Name': editForm.name,
         'Phone': editForm.phone,
-        'Discovery Source': editForm.source,
+        'Discovery Source': editForm.source as any,
         'Account Manager': editForm.accountManager ? [editForm.accountManager] : [],
       });
 
@@ -215,29 +220,23 @@ export default function CustomerContactsList() {
       setIsDetailsModalOpen(true); // Reopen details
 
       // Update local state temporarily
-      const updatedContact = {
+      const updatedContact: CustomerContact = {
         ...selectedContact,
         fields: {
           ...selectedContact.fields,
           'Contact Name': editForm.name,
           'Phone': editForm.phone,
-          'Discovery Source': editForm.source,
+          'Discovery Source': editForm.source as any,
           'Account Manager': editForm.accountManager ? [editForm.accountManager] : []
         }
       };
       setSelectedContact(updatedContact);
       setContacts(current => current.map(c => c.id === updatedContact.id ? updatedContact : c));
 
-      if (typeof Swal !== 'undefined') Swal.fire({
-        icon: 'success',
-        title: 'Updated',
-        text: 'Contact has been updated',
-        timer: 1500,
-        showConfirmButton: false
-      });
+      showFeedback('success', 'Contact has been updated');
     } catch (err) {
       console.error(err);
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to update contact', 'error');
+      showFeedback('error', 'Failed to update contact');
     }
   };
 
@@ -250,22 +249,22 @@ export default function CustomerContactsList() {
 
   const handleAddAccountSubmit = async () => {
     if (!accountForm.name) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Account name is required', 'error');
+      showFeedback('error', 'Account name is required');
       return;
     }
 
     try {
       await accountService.create({
         'Account Name': accountForm.name,
-        'Industry': accountForm.industry || undefined,
-        'Size': accountForm.size || undefined,
+        'Industry': accountForm.industry as any || undefined,
+        'Size': accountForm.size as any || undefined,
       });
       setIsAddAccountModalOpen(false);
       setIsDetailsModalOpen(true);
-      if (typeof Swal !== 'undefined') Swal.fire('Success!', 'Account created successfully', 'success');
+      showFeedback('success', 'Account created successfully');
       loadData();
     } catch (err) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create account', 'error');
+      showFeedback('error', 'Failed to create account');
     }
   };
 
@@ -278,37 +277,37 @@ export default function CustomerContactsList() {
 
   const handleAddInteractionSubmit = async () => {
     if (!interactionForm.name) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Interaction name is required', 'error');
+      showFeedback('error', 'Interaction name is required');
       return;
     }
 
     try {
       await interactionService.create({
         'Name': interactionForm.name,
-        'Type': interactionForm.type || undefined,
+        'Type': interactionForm.type as any || undefined,
         'Date & Time': interactionForm.datetime || undefined,
         'Team Member': interactionForm.teamMember ? [interactionForm.teamMember] : undefined,
         'Notes': interactionForm.notes || undefined,
       });
       setIsAddInteractionModalOpen(false);
       setIsDetailsModalOpen(true);
-      if (typeof Swal !== 'undefined') Swal.fire('Success!', 'Interaction created successfully', 'success');
+      showFeedback('success', 'Interaction created successfully');
       loadData();
     } catch (err) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create interaction', 'error');
+      showFeedback('error', 'Failed to create interaction');
     }
   };
 
   const handleAddTaskClick = (contact: CustomerContact) => {
     setSelectedContact(contact);
-    setTaskForm({ title: '', description: '', priority: '', status: 'To Do', dueDate: '', assignedTo: '' });
+    setTaskForm({ title: '', description: '', priority: '', status: 'To do', dueDate: '', assignedTo: '' });
     setIsDetailsModalOpen(false);
     setIsAddTaskModalOpen(true);
   };
 
   const handleAddTaskSubmit = async () => {
     if (!taskForm.title) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Task title is required', 'error');
+      showFeedback('error', 'Task title is required');
       return;
     }
 
@@ -316,60 +315,41 @@ export default function CustomerContactsList() {
       await taskService.create({
         'Task Title': taskForm.title,
         'Task Description': taskForm.description || undefined,
-        'Priority': taskForm.priority || undefined,
-        'Status': taskForm.status || 'To do',
+        'Priority': taskForm.priority as any || undefined,
+        'Status': taskForm.status as any || 'To do',
         'Task Deadline': taskForm.dueDate || undefined,
         'Task Owner': taskForm.assignedTo ? [taskForm.assignedTo] : undefined,
         'Customer Contact': selectedContact ? [selectedContact.id] : undefined,
       });
       setIsAddTaskModalOpen(false);
       setIsDetailsModalOpen(true);
-      if (typeof Swal !== 'undefined') Swal.fire('Success!', 'Task created successfully', 'success');
+      showFeedback('success', 'Task created successfully');
       loadData();
     } catch (err) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to create task', 'error');
+      showFeedback('error', 'Failed to create task');
     }
   };
 
   const handleDelete = (contact: CustomerContact) => {
-    if (typeof Swal === 'undefined') {
-      if (confirm(`Are you sure you want to delete ${contact.fields['Contact Name']}?`)) {
-        deleteContact(contact.id);
-      }
-      return;
-    }
-
-    Swal.fire({
-      title: 'Delete Contact?',
-      text: `Are you sure you want to delete ${contact.fields['Contact Name']}? This action cannot be undone.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete!',
-      cancelButtonText: 'Cancel',
-      customClass: {
-        confirmButton: 'btn btn-danger',
-        cancelButton: 'btn btn-light',
-      },
-    }).then((result: any) => {
-      if (result.isConfirmed) {
-        deleteContact(contact.id);
-      }
-    });
+    setSelectedContact(contact);
+    setIsDetailsModalOpen(false);
+    setIsDeleteModalOpen(true);
   };
 
-  const deleteContact = async (id: string) => {
+  const handleConfirmDelete = async () => {
+    if (!selectedContact) return;
     try {
-      await customerContactService.delete(id);
-      setIsDetailsModalOpen(false);
-      if (typeof Swal !== 'undefined') {
-        Swal.fire('Deleted!', 'Contact has been deleted.', 'success');
-      }
+      await customerContactService.delete(selectedContact.id);
+      showFeedback('success', 'Contact has been deleted.');
+      setIsDeleteModalOpen(false);
       loadData();
     } catch (err) {
-      if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to delete contact', 'error');
+      showFeedback('error', 'Failed to delete contact');
       console.error(err);
     }
   };
+
+
 
   const getSourceBadgeClass = (source?: string) => {
     switch (source) {
@@ -400,23 +380,18 @@ export default function CustomerContactsList() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="alert alert-danger" role="alert">
-        {error}
-        <button className="btn btn-sm btn-primary ms-3" onClick={loadData}>
-          <i className="ki-duotone ki-arrows-loop fs-4">
-            <span className="path1"></span>
-            <span className="path2"></span>
-          </i>
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
+
       <div className="card">
         {/* Card Header */}
         <div className="card-header border-0 pt-6">
@@ -543,101 +518,16 @@ export default function CustomerContactsList() {
         </div>
       </div>
 
-      {/* Create Modal */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Add New Customer Contact"
-        footer={
-          <div className="d-flex justify-content-end gap-2">
-            <button className="btn btn-light" onClick={() => setIsCreateModalOpen(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleCreateSubmit}>Create Contact</button>
-          </div>
-        }
-      >
-        <div className="d-flex flex-column gap-3">
-          <div>
-            <label className="form-label required">Contact Name</label>
-            <input className="form-control form-control-solid" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Enter contact name" />
-          </div>
-          <div>
-            <label className="form-label required">Phone Number</label>
-            <input className="form-control form-control-solid" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="+234 XXX XXX XXXX" />
-          </div>
-          <div>
-            <label className="form-label required">Discovery Source</label>
-            <select className="form-select form-select-solid" value={createForm.source} onChange={(e) => setCreateForm({ ...createForm, source: e.target.value })}>
-              <option value="">Select source...</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Facebook">Facebook</option>
-              <option value="Instagram">Instagram</option>
-              <option value="TikTok">TikTok</option>
-              <option value="Call">Call</option>
-              <option value="Walk-In">Walk-In</option>
-              <option value="Lead">Lead</option>
-            </select>
-          </div>
-          <div>
-            <label className="form-label">Created By</label>
-            <select className="form-select form-select-solid" value={createForm.createdById} onChange={(e) => setCreateForm({ ...createForm, createdById: e.target.value })}>
-              <option value="">Select team member...</option>
-              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
-            </select>
-          </div>
-        </div>
-      </Modal>
 
-      {/* Edit Modal */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => { setIsEditModalOpen(false); setIsDetailsModalOpen(true); }}
-        title="Edit Customer Contact"
-        footer={
-          <div className="d-flex justify-content-end gap-2">
-            <button className="btn btn-light" onClick={() => { setIsEditModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleEditSubmit}>Save Changes</button>
-          </div>
-        }
-      >
-        <div className="d-flex flex-column gap-3">
-          <div>
-            <label className="form-label required">Contact Name</label>
-            <input className="form-control form-control-solid" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-          </div>
-          <div>
-            <label className="form-label required">Phone Number</label>
-            <input className="form-control form-control-solid" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
-          </div>
-          <div>
-            <label className="form-label required">Discovery Source</label>
-            <select className="form-select form-select-solid" value={editForm.source} onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Facebook">Facebook</option>
-              <option value="Instagram">Instagram</option>
-              <option value="TikTok">TikTok</option>
-              <option value="Call">Call</option>
-              <option value="Walk-In">Walk-In</option>
-              <option value="Lead">Lead</option>
-            </select>
-          </div>
-          <div>
-            <label className="form-label">Account Manager</label>
-            <select className="form-select form-select-solid" value={editForm.accountManager} onChange={(e) => setEditForm({ ...editForm, accountManager: e.target.value })}>
-              <option value="">Unassigned</option>
-              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
-            </select>
-          </div>
-        </div>
-      </Modal>
 
-      {/* Details Modal */}
+      {/* View Details Modal */}
       <Modal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        title={selectedContact ? selectedContact.fields['Contact Name'] : 'Contact Details'}
+        title={selectedContact?.fields['Contact Name'] || 'Contact Details'}
         size="lg"
         footer={
-          <div className="d-flex justify-content-end gap-2">
+          <div className="d-flex justify-content-end gap-2 text-start">
             <button className="btn btn-danger me-auto" onClick={() => selectedContact && handleDelete(selectedContact)}>Delete</button>
             <button className="btn btn-light" onClick={() => setIsDetailsModalOpen(false)}>Close</button>
           </div>
@@ -648,20 +538,20 @@ export default function CustomerContactsList() {
             {/* Action Buttons */}
             <div className="d-flex gap-2 flex-wrap border-bottom pb-4 mb-2">
               <button className="btn btn-sm btn-primary" onClick={() => handleEditClick(selectedContact)}>
-                <i className="ki-duotone ki-pencil fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Edit
+                <i className="ki-duotone ki-pencil fs-6 me-1"><span className="path1"></span><span className="path2"></span></i> Edit
               </button>
               <button className="btn btn-sm btn-light" onClick={() => handleAddAccountClick(selectedContact)}>
-                <i className="ki-duotone ki-shop fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Add Account
+                <i className="ki-duotone ki-shop fs-6 me-1"><span className="path1"></span><span className="path2"></span></i> Add Account
               </button>
               <button className="btn btn-sm btn-light" onClick={() => handleAddInteractionClick(selectedContact)}>
-                <i className="ki-duotone ki-message-text-2 fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Add Interaction
+                <i className="ki-duotone ki-message-text-2 fs-6 me-1"><span className="path1"></span><span className="path2"></span></i> Add Interaction
               </button>
               <button className="btn btn-sm btn-light" onClick={() => handleAddTaskClick(selectedContact)}>
-                <i className="ki-duotone ki-calendar-tick fs-6 me-1"><span class="path1"></span><span class="path2"></span></i> Add Task
+                <i className="ki-duotone ki-calendar-tick fs-6 me-1"><span className="path1"></span><span className="path2"></span></i> Add Task
               </button>
             </div>
 
-            <div className="row g-3">
+            <div className="row g-3 text-start">
               <h5 className="text-primary mb-2">Contact Info</h5>
               <div className="col-md-6">
                 <label className="text-muted fw-bold small">Customer ID</label>
@@ -672,7 +562,7 @@ export default function CustomerContactsList() {
                 <div className="fw-bold">{selectedContact.fields['Phone']}</div>
               </div>
               <div className="col-md-6">
-                <label className="text-muted fw-bold small">Source</label>
+                <label className="text-muted fw-bold small">Discovery Source</label>
                 <div><span className={`badge ${getSourceBadgeClass(selectedContact.fields['Discovery Source'])}`}>{selectedContact.fields['Discovery Source']}</span></div>
               </div>
               <div className="col-md-6">
@@ -681,7 +571,7 @@ export default function CustomerContactsList() {
               </div>
             </div>
 
-            <div className="border-top pt-4 mt-2">
+            <div className="border-top pt-4 mt-2 text-start">
               <h5 className="text-primary mb-2">Activity & Tags</h5>
               <div className="row g-3">
                 <div className="col-md-12">
@@ -706,6 +596,111 @@ export default function CustomerContactsList() {
         )}
       </Modal>
 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirm Deletion"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={handleConfirmDelete}>Delete</button>
+          </div>
+        }
+      >
+        <div className="p-2 text-start">
+          <p>Are you sure you want to delete <strong>{selectedContact?.fields['Contact Name']}</strong>? This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Create Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Add New Customer"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsCreateModalOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleCreateSubmit}>Create Customer</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3 text-start">
+          <div>
+            <label className="form-label required">Contact Name</label>
+            <input className="form-control" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label required">Phone</label>
+            <input className="form-control" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label required">Discovery Source</label>
+            <select className="form-select" value={createForm.source} onChange={(e) => setCreateForm({ ...createForm, source: e.target.value })}>
+              <option value="">Select source...</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Instagram">Instagram</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Call">Call</option>
+              <option value="Walk-In">Walk-In</option>
+              <option value="Lead">Lead</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Created By</label>
+            <select className="form-select" value={createForm.createdById} onChange={(e) => setCreateForm({ ...createForm, createdById: e.target.value })}>
+              <option value="">Select team member...</option>
+              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Customer"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsEditModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleEditSubmit}>Save Changes</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3 text-start">
+          <div>
+            <label className="form-label required">Contact Name</label>
+            <input className="form-control" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label required">Phone</label>
+            <input className="form-control" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label required">Discovery Source</label>
+            <select className="form-select" value={editForm.source} onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}>
+              <option value="">Select source...</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Instagram">Instagram</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Call">Call</option>
+              <option value="Walk-In">Walk-In</option>
+              <option value="Lead">Lead</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Account Manager</label>
+            <select className="form-select" value={editForm.accountManager} onChange={(e) => setEditForm({ ...editForm, accountManager: e.target.value })}>
+              <option value="">Unassigned</option>
+              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
+            </select>
+          </div>
+        </div>
+      </Modal>
+
       {/* Add Account Modal */}
       <Modal
         isOpen={isAddAccountModalOpen}
@@ -718,7 +713,7 @@ export default function CustomerContactsList() {
           </div>
         }
       >
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-3 text-start">
           <div>
             <label className="form-label required">Account Name</label>
             <input className="form-control" value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} placeholder="Enter account name" />
@@ -741,9 +736,11 @@ export default function CustomerContactsList() {
               <option value="">Select size...</option>
               <option value="1-10">1-10 employees</option>
               <option value="11-50">11-50 employees</option>
-              <option value="51-200">51-200 employees</option>
-              <option value="201-500">201-500 employees</option>
-              <option value="500+">500+ employees</option>
+              <option value="51-100">51-100 employees</option>
+              <option value="101-500">101-500 employees</option>
+              <option value="501-1000">501-1000 employees</option>
+              <option value="1000-5000">1000-5000 employees</option>
+              <option value="10,000+">10,000+ employees</option>
             </select>
           </div>
         </div>
@@ -761,7 +758,7 @@ export default function CustomerContactsList() {
           </div>
         }
       >
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-3 text-start">
           <div>
             <label className="form-label required">Interaction Name</label>
             <input className="form-control" value={interactionForm.name} onChange={(e) => setInteractionForm({ ...interactionForm, name: e.target.value })} />
@@ -807,7 +804,7 @@ export default function CustomerContactsList() {
           </div>
         }
       >
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-3 text-start">
           <div>
             <label className="form-label required">Task Title</label>
             <input className="form-control" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} />
@@ -828,8 +825,8 @@ export default function CustomerContactsList() {
           <div>
             <label className="form-label">Status</label>
             <select className="form-select" value={taskForm.status} onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}>
-              <option value="To Do">To Do</option>
-              <option value="In Progress">In Progress</option>
+              <option value="To do">To do</option>
+              <option value="In progress">In progress</option>
               <option value="Done">Done</option>
             </select>
           </div>

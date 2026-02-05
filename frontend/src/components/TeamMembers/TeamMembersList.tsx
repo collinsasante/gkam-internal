@@ -4,7 +4,7 @@ import type { TeamMember } from '../../types/airtable.types';
 import Modal from '../Common/Modal';
 
 declare const $: any;
-declare const Swal: any;
+
 
 export default function TeamMembersList() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -20,6 +20,13 @@ export default function TeamMembersList() {
 
   // Form State
   const [formData, setFormData] = useState({ name: '', email: '', role: '' });
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   useEffect(() => {
     loadData();
@@ -116,7 +123,7 @@ export default function TeamMembersList() {
 
   const handleAddSubmit = async () => {
     if (!formData.name || !formData.email) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Please fill in all required fields' });
+      showFeedback('error', 'Please fill in all required fields');
       return;
     }
 
@@ -128,22 +135,33 @@ export default function TeamMembersList() {
       };
 
       await teamMemberService.create(createData);
-      Swal.fire('Success!', 'Team member has been added', 'success');
+      showFeedback('success', 'Team member has been added');
       loadData();
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Error creating team member:', error);
-      Swal.fire('Error!', 'Failed to create team member', 'error');
+      showFeedback('error', 'Failed to create team member');
     }
   };
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <>
+        {/* Feedback Alert */}
+        {feedback.type && (
+          <div
+            className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+            style={{ zIndex: 9999, minWidth: '300px' }}
+          >
+            {feedback.message}
+          </div>
+        )}
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -160,6 +178,15 @@ export default function TeamMembersList() {
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
       <div className="card">
         <div className="card-header border-0 pt-6">
           <div className="card-title">

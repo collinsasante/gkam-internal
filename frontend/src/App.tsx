@@ -174,7 +174,6 @@ function App() {
             onViewChange={setActiveView}
             currentUser={currentUser}
             isOpen={isMobileSidebarOpen}
-            onClose={() => setIsMobileSidebarOpen(false)}
           />
           {/* Mobile Sidebar Overlay */}
           {isMobileSidebarOpen && (

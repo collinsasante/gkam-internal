@@ -3,7 +3,7 @@ import { authService } from '../../services/auth.service';
 import logoRed from '../logo_red.png';
 import Modal from '../Common/Modal';
 
-declare const Swal: any;
+
 
 interface LoginProps {
   onLogin: () => void;
@@ -20,19 +20,18 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
 
   // Modal State
   const [isResetSuccessOpen, setIsResetSuccessOpen] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback({ type: null, message: null }), 3000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Missing Information',
-          text: 'Please enter both your email and password',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        });
-      }
+      showFeedback('error', 'Please enter both your email and password');
       return;
     }
 
@@ -40,30 +39,10 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
 
     try {
       await authService.login(email, password);
-      // Optional: Show a brief success message or just redirect
-      if (typeof Swal !== 'undefined') {
-        const Toast = Swal.mixin({
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 1500,
-          timerProgressBar: true
-        });
-        Toast.fire({
-          icon: 'success',
-          title: 'Signed in successfully'
-        });
-      }
+      showFeedback('success', 'Signed in successfully');
       onLogin();
     } catch (error: any) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Login Failed',
-          text: error.message || 'Invalid email or password. Please try again.',
-          icon: 'error',
-          confirmButtonText: 'Try Again',
-        });
-      }
+      showFeedback('error', error.message || 'Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -73,14 +52,7 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
     e.preventDefault();
 
     if (!resetEmail) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Missing Information',
-          text: 'Please enter your email address',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        });
-      }
+      showFeedback('error', 'Please enter your email address');
       return;
     }
 
@@ -94,14 +66,7 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
       // The modal uses it, so clear it AFTER modal closes or just leave it.
       // setResetEmail(''); 
     } catch (error: any) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: 'Error',
-          text: error.message || 'Unable to process password reset request.',
-          icon: 'error',
-          confirmButtonText: 'Try Again',
-        });
-      }
+      showFeedback('error', error.message || 'Unable to process password reset request.');
     } finally {
       setResetLoading(false);
     }
@@ -109,6 +74,15 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
 
   return (
     <>
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <div
+          className={`alert alert-${feedback.type === 'success' ? 'success' : 'danger'} position-fixed top-0 start-50 translate-middle-x mt-5`}
+          style={{ zIndex: 9999, minWidth: '300px' }}
+        >
+          {feedback.message}
+        </div>
+      )}
       <div className="auth-page d-flex align-items-center justify-content-center">
         <div className="auth-form-container">
           {/* Logo */}
