@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { contactService, activityService, dealsService, teamMemberService } from '../../services/airtable.service';
+import { contactService, activityService, dealsService, teamMemberService, leadsService } from '../../services/airtable.service';
 import { authService } from '../../services/auth.service';
 import type { Contact, Deal, TeamMember, Activity } from '../../types/airtable.types';
+import { toTitleCase } from '../../utils/stringUtils';
 import Modal from '../Common/Modal';
 
 
@@ -23,6 +24,7 @@ export default function ContactsList() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
 
@@ -35,6 +37,13 @@ export default function ContactsList() {
 
   // Form State
   const [formData, setFormData] = useState<any>({});
+  const [leadForm, setLeadForm] = useState({
+    company: '',
+    email: '',
+    phone: '',
+    title: '',
+    status: 'New Lead'
+  });
 
   useEffect(() => {
     loadContacts();
@@ -214,6 +223,40 @@ export default function ContactsList() {
     }
   };
 
+  const openAddLeadModal = (contact: Contact) => {
+    setSelectedContact(contact);
+    setLeadForm({
+      company: '',
+      email: contact.fields['Email'] || '',
+      phone: contact.fields['Phone'] || '',
+      title: '',
+      status: 'New Lead'
+    });
+    setIsViewModalOpen(false);
+    setIsAddLeadModalOpen(true);
+  };
+
+  const handleAddLeadSubmit = async () => {
+    if (!selectedContact) return;
+    try {
+      await leadsService.create({
+        'Contact': [selectedContact.fields['Name'] || ''],
+        'Lead': [selectedContact.id],
+        'Company': leadForm.company,
+        'Email': leadForm.email,
+        'Phone': leadForm.phone,
+        'Title': leadForm.title,
+        'Status': leadForm.status as any,
+      });
+      showFeedback('success', 'Lead has been created successfully.');
+      setIsAddLeadModalOpen(false);
+      loadContacts();
+    } catch (error) {
+      console.error(error);
+      showFeedback('error', 'Failed to create lead.');
+    }
+  };
+
 
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch = searchTerm === '' ||
@@ -314,12 +357,12 @@ export default function ContactsList() {
                 <option value="Unqualified">Unqualified</option>
               </select>
 
-              <button className="btn btn-light" onClick={loadContacts}>
-                <i className="ki-duotone ki-arrows-circle fs-2">
+              <button className="btn btn-light" onClick={loadContacts} disabled={loading}>
+                <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
                   <span className="path1"></span>
                   <span className="path2"></span>
                 </i>
-                Refresh
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
 
               <button className="btn btn-primary" onClick={openCreateModal}>
@@ -351,7 +394,7 @@ export default function ContactsList() {
                     </td>
                   </tr>
                 ) : (
-                  filteredContacts.map((contact) => (
+                  filteredContacts.map((contact, index) => (
                     <tr
                       key={contact.id}
                       onClick={() => openViewModal(contact)}
@@ -360,7 +403,7 @@ export default function ContactsList() {
                     >
                       <td>
                         <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                          {contact.fields['Contact ID'] || 'N/A'}
+                          {index + 1}
                         </span>
                       </td>
                       <td>
@@ -372,7 +415,7 @@ export default function ContactsList() {
                           </div>
                           <div className="d-flex justify-content-start flex-column">
                             <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                              {contact.fields['Name'] || 'N/A'}
+                              {contact.fields['Name'] ? toTitleCase(contact.fields['Name']) : 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -529,7 +572,7 @@ export default function ContactsList() {
       <Modal
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
-        title={selectedContact?.fields['Name'] || 'Contact Details'}
+        title={selectedContact?.fields['Name'] ? toTitleCase(selectedContact.fields['Name']) : 'Contact Details'}
         size="lg"
       >
         {selectedContact && (
@@ -541,6 +584,10 @@ export default function ContactsList() {
                   <span className="path1"></span><span className="path2"></span><span className="path3"></span><span className="path4"></span>
                 </i>
                 Add Activity
+              </button>
+              <button className="btn btn-primary me-2" onClick={() => openAddLeadModal(selectedContact)}>
+                <i className="ki-duotone ki-plus fs-2"></i>
+                Add Lead
               </button>
               <button className="btn btn-light me-2" onClick={() => openEditModal(selectedContact)}>
                 <i className="ki-duotone ki-pencil fs-2"><span className="path1"></span><span className="path2"></span></i>
@@ -779,6 +826,48 @@ export default function ContactsList() {
       >
         <div className="p-2 text-start">
           <p>Are you sure you want to delete contact <strong>{selectedContact?.fields['Name'] || selectedContact?.fields['Phone']}</strong>? This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Add Lead Modal */}
+      <Modal
+        isOpen={isAddLeadModalOpen}
+        onClose={() => { setIsAddLeadModalOpen(false); setIsViewModalOpen(true); }}
+        title={`Add Lead for ${selectedContact?.fields['Name'] ? toTitleCase(selectedContact.fields['Name']) : 'Contact'}`}
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsAddLeadModalOpen(false); setIsViewModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleAddLeadSubmit}>Create Lead</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3 text-start">
+          <div>
+            <label className="form-label">Company</label>
+            <input className="form-control" value={leadForm.company} onChange={(e) => setLeadForm({ ...leadForm, company: e.target.value })} placeholder="Enter company name" />
+          </div>
+          <div>
+            <label className="form-label">Email</label>
+            <input type="email" className="form-control" value={leadForm.email} onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })} placeholder="email@example.com" />
+          </div>
+          <div>
+            <label className="form-label">Phone</label>
+            <input className="form-control" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} placeholder="Phone number" />
+          </div>
+          <div>
+            <label className="form-label">Job Title</label>
+            <input className="form-control" value={leadForm.title} onChange={(e) => setLeadForm({ ...leadForm, title: e.target.value })} placeholder="Enter job title" />
+          </div>
+          <div>
+            <label className="form-label required">Status</label>
+            <select className="form-select" value={leadForm.status} onChange={(e) => setLeadForm({ ...leadForm, status: e.target.value as any })}>
+              <option value="New Lead">New Lead</option>
+              <option value="Attempted to Contact">Attempted to Contact</option>
+              <option value="Contacted">Contacted</option>
+              <option value="Qualified">Qualified</option>
+              <option value="Unqualified">Unqualified</option>
+            </select>
+          </div>
         </div>
       </Modal>
     </>

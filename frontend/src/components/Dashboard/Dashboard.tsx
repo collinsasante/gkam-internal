@@ -130,12 +130,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-6">
         <h1 className="mb-0">Dashboard Overview</h1>
-        <button className="btn btn-sm btn-light" onClick={loadAllData}>
-          <i className="ki-duotone ki-arrows-circle fs-2">
+        <button className="btn btn-sm btn-light" onClick={loadAllData} disabled={loading}>
+          <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
             <span className="path1"></span>
             <span className="path2"></span>
           </i>
-          Refresh All
+          {loading ? 'Refreshing...' : 'Refresh All'}
         </button>
       </div>
 

@@ -10,7 +10,7 @@ import Modal from '../Common/Modal';
 type LeadStatus = 'New Lead' | 'Attempted to Contact' | 'Contacted' | 'Qualified' | 'Unqualified';
 
 export default function LeadsList() {
-  console.log('✅ LeadsList Component Version: REFACK-MODAL-V1');
+  console.log('✅ LeadsList Component Version: V2-WITH-FILTERS-AND-SORT');
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -296,65 +296,87 @@ export default function LeadsList() {
         </div>
       )}
 
-      <div className="card">
-        <div className="card-header border-0 pt-6">
-          <div className="d-flex align-items-center gap-3">
-            <div className="d-flex align-items-center position-relative my-1">
-              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
+      <div className="card mb-5 mb-xl-8">
+        <div className="card-header border-0 pt-5">
+          <div className="card-title align-items-start flex-column">
+            <h3 className="card-label fw-bold fs-3 mb-1">Leads Pipeline</h3>
+            <span className="text-muted fw-semibold fs-7">Manage and track your sales leads</span>
+          </div>
+          <div className="card-toolbar gap-3">
+            <div className="d-flex align-items-center position-relative">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-4">
                 <span className="path1"></span>
                 <span className="path2"></span>
               </i>
               <input
                 type="text"
-                className="form-control form-control-solid w-250px ps-13"
+                className="form-control w-250px ps-12"
                 placeholder="Search leads..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="d-flex align-items-center gap-2">
-              <input
-                type="date"
-                className="form-control form-control-solid w-150px"
-                value={dateFilter.start}
-                onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-                title="Start Date"
-              />
-              <span className="text-gray-500">-</span>
-              <input
-                type="date"
-                className="form-control form-control-solid w-150px"
-                value={dateFilter.end}
-                onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-                title="End Date"
-              />
+              <div className="position-relative">
+                <input
+                  type="date"
+                  className="form-control ps-10"
+                  value={dateFilter.start}
+                  onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
+                  title="Start Date"
+                />
+                <i className="ki-duotone ki-calendar-8 fs-2 position-absolute top-50 start-0 translate-middle-y ms-3">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                  <span className="path3"></span>
+                  <span className="path4"></span>
+                  <span className="path5"></span>
+                  <span className="path6"></span>
+                </i>
+              </div>
+              <span className="text-gray-500">to</span>
+              <div className="position-relative">
+                <input
+                  type="date"
+                  className="form-control ps-10"
+                  value={dateFilter.end}
+                  onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
+                  title="End Date"
+                />
+                <i className="ki-duotone ki-calendar-8 fs-2 position-absolute top-50 start-0 translate-middle-y ms-3">
+                  <span className="path1"></span>
+                  <span className="path2"></span>
+                  <span className="path3"></span>
+                  <span className="path4"></span>
+                  <span className="path5"></span>
+                  <span className="path6"></span>
+                </i>
+              </div>
             </div>
             <select
-              className="form-select w-150px"
+              className="form-select w-175px"
               value={`${sortConfig.key}-${sortConfig.direction}`}
               onChange={(e) => {
                 const [key, direction] = e.target.value.split('-');
                 setSortConfig({ key, direction: direction as 'asc' | 'desc' });
               }}
             >
-              <option value="Created on-desc">Newest First</option>
-              <option value="Created on-asc">Oldest First</option>
-              <option value="Company-asc">Company (A-Z)</option>
-              <option value="Contact-asc">Name (A-Z)</option>
+              <option value="Created on-desc">📅 Newest First</option>
+              <option value="Created on-asc">⏳ Oldest First</option>
+              <option value="Company-asc">🏢 Company (A-Z)</option>
+              <option value="Contact-asc">👤 Name (A-Z)</option>
             </select>
-          </div>
-
-          <div className="d-flex justify-content-end align-items-center gap-3">
-            <button className="btn btn-sm btn-light" onClick={loadData} disabled={loading}>
-              <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
+            <button className="btn btn-icon btn-custom btn-active-color-primary" onClick={loadData} disabled={loading} title="Refresh">
+              <i className={`ki-duotone ki-arrows-circle fs-1 ${loading ? 'rotate' : ''}`}>
                 <span className="path1"></span>
                 <span className="path2"></span>
               </i>
-              {loading ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
         </div>
+      </div>
 
+      <div className="card">
         <div className="card-body py-4">
           <div className="d-flex gap-5 overflow-auto pb-5" style={{ minHeight: '600px' }}>
             {columns.map((column) => {
