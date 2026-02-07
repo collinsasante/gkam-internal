@@ -17,6 +17,8 @@ export default function LeadsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'Created on', direction: 'desc' });
 
   // Modal States
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -225,15 +227,31 @@ export default function LeadsList() {
   ];
 
   const getLeadsByStatus = (status: LeadStatus) => {
-    const filtered = leads.filter(lead => {
+    let filtered = leads.filter(lead => {
       const matchesStatus = lead.fields['Status'] === status;
       const matchesSearch = searchTerm === '' ||
         (Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].some(c => c.toLowerCase().includes(searchTerm.toLowerCase()))) ||
         lead.fields['Company']?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.fields['Email']?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.fields['Phone']?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesStatus && matchesSearch;
+
+      const createdOn = lead.fields['Created on'] || '';
+      const matchesDate = (!dateFilter.start || createdOn >= dateFilter.start) &&
+        (!dateFilter.end || createdOn <= dateFilter.end);
+
+      return matchesStatus && matchesSearch && matchesDate;
     });
+
+    // Sort leads
+    filtered = [...filtered].sort((a, b) => {
+      let valA = a.fields[sortConfig.key as keyof typeof a.fields] || '';
+      let valB = b.fields[sortConfig.key as keyof typeof b.fields] || '';
+
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     return filtered;
   };
 
@@ -280,7 +298,7 @@ export default function LeadsList() {
 
       <div className="card">
         <div className="card-header border-0 pt-6">
-          <div className="card-title">
+          <div className="d-flex align-items-center gap-3">
             <div className="d-flex align-items-center position-relative my-1">
               <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
                 <span className="path1"></span>
@@ -288,24 +306,52 @@ export default function LeadsList() {
               </i>
               <input
                 type="text"
-                className="form-control form-control-solid w-300px ps-13"
+                className="form-control form-control-solid w-250px ps-13"
                 placeholder="Search leads..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <div className="d-flex align-items-center gap-2">
+              <input
+                type="date"
+                className="form-control form-control-solid w-150px"
+                value={dateFilter.start}
+                onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
+                title="Start Date"
+              />
+              <span className="text-gray-500">-</span>
+              <input
+                type="date"
+                className="form-control form-control-solid w-150px"
+                value={dateFilter.end}
+                onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
+                title="End Date"
+              />
+            </div>
+            <select
+              className="form-select w-150px"
+              value={`${sortConfig.key}-${sortConfig.direction}`}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split('-');
+                setSortConfig({ key, direction: direction as 'asc' | 'desc' });
+              }}
+            >
+              <option value="Created on-desc">Newest First</option>
+              <option value="Created on-asc">Oldest First</option>
+              <option value="Company-asc">Company (A-Z)</option>
+              <option value="Contact-asc">Name (A-Z)</option>
+            </select>
           </div>
 
-          <div className="card-toolbar">
-            <div className="d-flex justify-content-end align-items-center gap-3">
-              <button className="btn btn-sm btn-light" onClick={loadData}>
-                <i className="ki-duotone ki-arrows-circle fs-2">
-                  <span className="path1"></span>
-                  <span className="path2"></span>
-                </i>
-                Refresh
-              </button>
-            </div>
+          <div className="d-flex justify-content-end align-items-center gap-3">
+            <button className="btn btn-sm btn-light" onClick={loadData} disabled={loading}>
+              <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
+                <span className="path1"></span>
+                <span className="path2"></span>
+              </i>
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
           </div>
         </div>
 
@@ -708,7 +754,7 @@ export default function LeadsList() {
         <div className="p-2">
           <label className="form-label fw-bold fs-6 mb-2">Select Owner</label>
           <select
-            className="form-select form-select-solid"
+            className="form-select"
             value={tempOwnerId}
             onChange={(e) => setTempOwnerId(e.target.value)}
           >
@@ -752,7 +798,7 @@ export default function LeadsList() {
               Company
             </label>
             <input
-              className="form-control form-control-solid"
+              className="form-control"
               value={editForm.company}
               onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
               placeholder="Enter company name"
@@ -766,7 +812,7 @@ export default function LeadsList() {
               </label>
               <input
                 type="email"
-                className="form-control form-control-solid"
+                className="form-control"
                 value={editForm.email}
                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                 placeholder="email@example.com"
@@ -777,7 +823,7 @@ export default function LeadsList() {
                 Phone
               </label>
               <input
-                className="form-control form-control-solid"
+                className="form-control"
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                 placeholder="+234 XXX XXX XXXX"
@@ -790,7 +836,7 @@ export default function LeadsList() {
               Job Title
             </label>
             <input
-              className="form-control form-control-solid"
+              className="form-control"
               value={editForm.title}
               onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
               placeholder="Enter job title"

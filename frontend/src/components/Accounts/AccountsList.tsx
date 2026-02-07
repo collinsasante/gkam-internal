@@ -310,7 +310,7 @@ export default function AccountsList() {
           <div className="card-toolbar">
             <div className="d-flex justify-content-end align-items-center gap-3">
               <select
-                className="form-select form-select-solid w-150px"
+                className="form-select w-150px"
                 value={filterIndustry}
                 onChange={(e) => setFilterIndustry(e.target.value)}
               >
@@ -323,7 +323,7 @@ export default function AccountsList() {
               </select>
 
               <select
-                className="form-select form-select-solid w-150px"
+                className="form-select w-150px"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -592,11 +592,11 @@ export default function AccountsList() {
           <label className="form-label">Type</label>
           <select className="form-select" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
             <option value="">Select type...</option>
-            <option value="Discovery">🔍 Discovery</option>
-            <option value="Label discussion">🏷️ Label discussion</option>
-            <option value="Price Discussion">💰 Price Discussion</option>
-            <option value="Custom Solution">⚙️ Custom Solution</option>
-            <option value="Weekly Check-in">📅 Weekly Check-in</option>
+            <option value="Discovery">Discovery</option>
+            <option value="Label discussion">Label discussion</option>
+            <option value="Price Discussion">Price Discussion</option>
+            <option value="Custom Solution">Custom Solution</option>
+            <option value="Weekly Check-in">Weekly Check-in</option>
           </select>
         </div>
         <div className="fv-row mb-5">
@@ -632,18 +632,18 @@ export default function AccountsList() {
         <div className="fv-row mb-5">
           <label className="form-label">Status</label>
           <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
-            <option value="To do">📋 To do</option>
-            <option value="In progress">⚙️ In progress</option>
-            <option value="Done">✅ Done</option>
+            <option value="To do">To do</option>
+            <option value="In progress">In progress</option>
+            <option value="Done">Done</option>
           </select>
         </div>
         <div className="fv-row mb-5">
           <label className="form-label">Priority</label>
           <select className="form-select" value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
             <option value="">Select priority...</option>
-            <option value="High">🔴 High</option>
-            <option value="Medium">🟡 Medium</option>
-            <option value="Low">🟢 Low</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
           </select>
         </div>
         <div className="fv-row mb-5">

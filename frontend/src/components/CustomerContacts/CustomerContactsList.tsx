@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { customerContactService, teamMemberService, accountService, interactionService, taskService } from '../../services/airtable.service';
+import { customerContactService, teamMemberService, accountService, interactionService, taskService, leadsService } from '../../services/airtable.service';
 import type { CustomerContact, TeamMember } from '../../types/airtable.types';
+import { authService } from '../../services/auth.service';
+import { toTitleCase } from '../../utils/stringUtils';
 import Modal from '../Common/Modal';
 
 // Declare jQuery and DataTables types
@@ -21,6 +23,7 @@ export default function CustomerContactsList() {
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [isAddInteractionModalOpen, setIsAddInteractionModalOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
@@ -68,6 +71,14 @@ export default function CustomerContactsList() {
     status: 'To do',
     dueDate: '',
     assignedTo: ''
+  });
+
+  const [leadForm, setLeadForm] = useState({
+    company: '',
+    email: '',
+    phone: '',
+    title: '',
+    status: 'New Lead'
   });
 
   useEffect(() => {
@@ -147,11 +158,14 @@ export default function CustomerContactsList() {
   };
 
   const handleCreateClick = () => {
+    const currentUser = authService.getCurrentUser();
+    const employeeId = teamMembers.find(tm => tm.fields['Email']?.toLowerCase() === currentUser?.email?.toLowerCase())?.id;
+
     setCreateForm({
       name: '',
       phone: '',
       source: '',
-      createdById: ''
+      createdById: employeeId || ''
     });
     setIsCreateModalOpen(true);
   };
@@ -330,6 +344,47 @@ export default function CustomerContactsList() {
     }
   };
 
+  const handleAddLeadClick = (contact: CustomerContact) => {
+    setSelectedContact(contact);
+    setLeadForm({
+      company: '',
+      email: '',
+      phone: contact.fields['Phone'] || '',
+      title: '',
+      status: 'New Lead'
+    });
+    setIsDetailsModalOpen(false);
+    setIsAddLeadModalOpen(true);
+  };
+
+  const handleAddLeadSubmit = async () => {
+    if (!selectedContact) return;
+
+    try {
+      const currentUser = authService.getCurrentUser();
+      const employeeId = teamMembers.find(tm => tm.fields['Email']?.toLowerCase() === currentUser?.email?.toLowerCase())?.id;
+
+      await leadsService.create({
+        'Contact': [selectedContact.fields['Contact Name'] || 'Unknown'],
+        'Lead': [selectedContact.id],
+        'Company': leadForm.company || undefined,
+        'Email': leadForm.email || undefined,
+        'Phone': leadForm.phone || undefined,
+        'Title': leadForm.title || undefined,
+        'Status': leadForm.status as any,
+        'Owner': employeeId ? [employeeId] : undefined
+      });
+
+      setIsAddLeadModalOpen(false);
+      setIsDetailsModalOpen(true);
+      showFeedback('success', 'Lead created successfully');
+      loadData();
+    } catch (err) {
+      console.error(err);
+      showFeedback('error', 'Failed to create lead');
+    }
+  };
+
   const handleDelete = (contact: CustomerContact) => {
     setSelectedContact(contact);
     setIsDetailsModalOpen(false);
@@ -407,12 +462,12 @@ export default function CustomerContactsList() {
                 </i>
                 Add Customer
               </button>
-              <button className="btn btn-light" onClick={loadData}>
-                <i className="ki-duotone ki-arrows-loop fs-4">
+              <button className="btn btn-light" onClick={loadData} disabled={loading}>
+                <i className={`ki-duotone ki-arrows-loop fs-4 ${loading ? 'rotate' : ''}`}>
                   <span className="path1"></span>
                   <span className="path2"></span>
                 </i>
-                Refresh
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -466,7 +521,7 @@ export default function CustomerContactsList() {
                     </td>
                   </tr>
                 ) : (
-                  contacts.map((contact) => (
+                  contacts.map((contact, index) => (
                     <tr
                       key={contact.id}
                       style={{ cursor: 'pointer' }}
@@ -475,12 +530,12 @@ export default function CustomerContactsList() {
                     >
                       <td>
                         <span className="text-gray-800 text-hover-primary mb-1">
-                          {contact.fields['Customer ID'] || 'N/A'}
+                          {index + 1}
                         </span>
                       </td>
                       <td>
                         <span className="text-gray-800 text-hover-primary mb-1 fw-bold">
-                          {contact.fields['Contact Name'] || 'N/A'}
+                          {toTitleCase(contact.fields['Contact Name'])}
                         </span>
                       </td>
                       <td>
@@ -524,7 +579,7 @@ export default function CustomerContactsList() {
       <Modal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
-        title={selectedContact?.fields['Contact Name'] || 'Contact Details'}
+        title={selectedContact?.fields['Contact Name'] ? toTitleCase(selectedContact.fields['Contact Name']) : 'Contact Details'}
         size="lg"
         footer={
           <div className="d-flex justify-content-end gap-2 text-start">
@@ -548,6 +603,9 @@ export default function CustomerContactsList() {
               </button>
               <button className="btn btn-sm btn-light" onClick={() => handleAddTaskClick(selectedContact)}>
                 <i className="ki-duotone ki-calendar-tick fs-6 me-1"><span className="path1"></span><span className="path2"></span></i> Add Task
+              </button>
+              <button className="btn btn-sm btn-light" onClick={() => handleAddLeadClick(selectedContact)}>
+                <i className="ki-duotone ki-badge fs-6 me-1"><span className="path1"></span><span className="path2"></span><span className="path3"></span><span className="path4"></span><span className="path5"></span></i> Add Lead
               </button>
             </div>
 
@@ -647,13 +705,7 @@ export default function CustomerContactsList() {
               <option value="Lead">Lead</option>
             </select>
           </div>
-          <div>
-            <label className="form-label">Created By</label>
-            <select className="form-select" value={createForm.createdById} onChange={(e) => setCreateForm({ ...createForm, createdById: e.target.value })}>
-              <option value="">Select team member...</option>
-              {teamMembers.map(tm => <option key={tm.id} value={tm.id}>{tm.fields['Name']}</option>)}
-            </select>
-          </div>
+          {/* Created By is now automated */}
         </div>
       </Modal>
 
@@ -792,11 +844,53 @@ export default function CustomerContactsList() {
         </div>
       </Modal>
 
+      {/* Add Lead Modal */}
+      <Modal
+        isOpen={isAddLeadModalOpen}
+        onClose={() => { setIsAddLeadModalOpen(false); setIsDetailsModalOpen(true); }}
+        title={`Add Lead for ${selectedContact?.fields['Contact Name'] ? toTitleCase(selectedContact.fields['Contact Name']) : 'Contact'}`}
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => { setIsAddLeadModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleAddLeadSubmit}>Create Lead</button>
+          </div>
+        }
+      >
+        <div className="d-flex flex-column gap-3 text-start">
+          <div>
+            <label className="form-label">Company</label>
+            <input className="form-control" value={leadForm.company} onChange={(e) => setLeadForm({ ...leadForm, company: e.target.value })} placeholder="Enter company name" />
+          </div>
+          <div>
+            <label className="form-label">Email</label>
+            <input type="email" className="form-control" value={leadForm.email} onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })} placeholder="email@example.com" />
+          </div>
+          <div>
+            <label className="form-label">Phone</label>
+            <input className="form-control" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} placeholder="Phone number" />
+          </div>
+          <div>
+            <label className="form-label">Job Title</label>
+            <input className="form-control" value={leadForm.title} onChange={(e) => setLeadForm({ ...leadForm, title: e.target.value })} placeholder="Enter job title" />
+          </div>
+          <div>
+            <label className="form-label required">Status</label>
+            <select className="form-select" value={leadForm.status} onChange={(e) => setLeadForm({ ...leadForm, status: e.target.value as any })}>
+              <option value="New Lead">New Lead</option>
+              <option value="Attempted to Contact">Attempted to Contact</option>
+              <option value="Contacted">Contacted</option>
+              <option value="Qualified">Qualified</option>
+              <option value="Unqualified">Unqualified</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
       {/* Add Task Modal */}
       <Modal
         isOpen={isAddTaskModalOpen}
         onClose={() => { setIsAddTaskModalOpen(false); setIsDetailsModalOpen(true); }}
-        title={`Add Task for ${selectedContact?.fields['Contact Name']}`}
+        title={`Add Task for ${selectedContact?.fields['Contact Name'] ? toTitleCase(selectedContact.fields['Contact Name']) : 'Contact'}`}
         footer={
           <div className="d-flex justify-content-end gap-2">
             <button className="btn btn-light" onClick={() => { setIsAddTaskModalOpen(false); setIsDetailsModalOpen(true); }}>Cancel</button>
@@ -845,4 +939,4 @@ export default function CustomerContactsList() {
       </Modal>
     </>
   );
-}
+};

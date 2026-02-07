@@ -75,7 +75,7 @@ export default function DesignDraftsList() {
   const handleSendWhatsApp = async (phoneNumber?: string) => {
     if (!phoneNumber || !selectedDesign) return;
 
-    const message = `Hello! 👋\n\nUpdate on your design project: ${selectedDesign.fields['Name']}\n\nOrder: ${selectedDesign.fields['Order Number'] || 'N/A'}\nStatus: ${selectedDesign.fields['Status'] || 'Design'}\nRevisions Left: ${selectedDesign.fields['Revisions Left'] ?? 3}\n\nTrack your order: https://track.packglamour.com/#ORD-${selectedDesign.fields['Order Number']}`;
+    const message = `Hello!\n\nUpdate on your design project: ${selectedDesign.fields['Name']}\n\nOrder: ${selectedDesign.fields['Order Number'] || 'N/A'}\nStatus: ${selectedDesign.fields['Status'] || 'Design'}\nRevisions Left: ${selectedDesign.fields['Revisions Left'] ?? 3}\n\nTrack your order: https://track.packglamour.com/#ORD-${selectedDesign.fields['Order Number']}`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}`;

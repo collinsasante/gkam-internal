@@ -53,22 +53,6 @@ export default function CompletedLabelFormsList() {
     }
   };
 
-  const getLabelTypeIcon = (type?: string) => {
-    switch (type) {
-      case 'Sticker Label':
-        return '🏷️';
-      case 'Shrink Sleeve':
-        return '📦';
-      case 'Wrap Around':
-        return '🔄';
-      case 'Front & Back':
-        return '📄';
-      case 'Custom':
-        return '⚙️';
-      default:
-        return '';
-    }
-  };
 
   const searchFilteredForms = forms.filter(form => {
     if (searchTerm === '') return true;
@@ -128,7 +112,7 @@ export default function CompletedLabelFormsList() {
         <div className="card-toolbar">
           <div className="d-flex align-items-center gap-3">
             <select
-              className="form-select form-select-solid w-200px"
+              className="form-select w-200px"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -177,7 +161,7 @@ export default function CompletedLabelFormsList() {
                   </td>
                   <td>
                     <span title={form.fields['Label Type'] || 'N/A'}>
-                      {getLabelTypeIcon(form.fields['Label Type'])} {form.fields['Label Type'] || 'N/A'}
+                      {form.fields['Label Type'] || 'N/A'}
                     </span>
                   </td>
                   <td>

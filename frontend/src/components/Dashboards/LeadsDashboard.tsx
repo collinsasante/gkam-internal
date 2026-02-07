@@ -14,6 +14,7 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
     wonDeals: 0,
     dealValue: 0,
     wonValue: 0,
+    lostDeals: 0,
     totalActivities: 0,
     leadsPerStage: {
       'New Lead': 0,
@@ -65,6 +66,7 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
         'Won': deals.filter(d => d.fields['Stage'] === 'Won').length,
         'Lost': deals.filter(d => d.fields['Stage'] === 'Lost').length,
       };
+      const lostDealsCount = deals.filter(d => d.fields['Stage'] === 'Lost').length;
 
       // Calculate deal values
       const wonDeals = deals.filter(d => d.fields['Stage'] === 'Won');
@@ -79,6 +81,7 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
         wonDeals: wonDeals.length,
         dealValue,
         wonValue,
+        lostDeals: lostDealsCount,
         totalActivities: activities.length,
         leadsPerStage,
         dealsPerStage,
@@ -116,12 +119,12 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-6">
         <h1 className="mb-0">Sales Pipeline Dashboard</h1>
-        <button className="btn btn-sm btn-light" onClick={loadStats}>
-          <i className="ki-duotone ki-arrows-circle fs-2">
+        <button className="btn btn-sm btn-light" onClick={loadStats} disabled={loading}>
+          <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
             <span className="path1"></span>
             <span className="path2"></span>
           </i>
-          Refresh
+          {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
@@ -194,17 +197,18 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
         </div>
 
         <div className="col-xl-3">
-          <div className="card card-flush h-100" style={{ cursor: 'pointer' }} onClick={() => onNavigate('activities')}>
+          <div className="card card-flush h-100" style={{ cursor: 'pointer' }} onClick={() => onNavigate('deals')}>
             <div className="card-body">
               <div className="d-flex align-items-center mb-2">
-                <span className="fs-2hx fw-bold text-gray-800 me-2">{stats.totalActivities}</span>
+                <span className="fs-2hx fw-bold text-gray-800 me-2">{stats.lostDeals}</span>
               </div>
-              <span className="fs-6 fw-semibold text-gray-400">Total Activities</span>
+              <span className="fs-6 fw-semibold text-gray-400">Lost Deals</span>
               <div className="mt-3">
-                <i className="ki-duotone ki-notification-bing fs-3x text-danger">
+                <i className="ki-duotone ki-trash-square fs-3x text-danger">
                   <span className="path1"></span>
                   <span className="path2"></span>
                   <span className="path3"></span>
+                  <span className="path4"></span>
                 </i>
               </div>
             </div>
@@ -259,7 +263,7 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
 
       {/* Pipeline Breakdown */}
       <div className="row g-5 g-xl-8">
-        <div className="col-xl-6">
+        <div className="col-xl-6" style={{ cursor: 'pointer' }} onClick={() => onNavigate('leads')}>
           <div className="card card-flush h-100">
             <div className="card-header pt-7">
               <h3 className="card-title align-items-start flex-column">
@@ -277,11 +281,10 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
                     </div>
                     <div className="progress h-6px">
                       <div
-                        className={`progress-bar ${
-                          stage === 'Qualified' ? 'bg-success' :
+                        className={`progress-bar ${stage === 'Qualified' ? 'bg-success' :
                           stage === 'Contacted' ? 'bg-info' :
-                          stage === 'Unqualified' ? 'bg-danger' : 'bg-primary'
-                        }`}
+                            stage === 'Unqualified' ? 'bg-danger' : 'bg-primary'
+                          }`}
                         style={{ width: `${stats.totalLeads > 0 ? (count / stats.totalLeads * 100) : 0}%` }}
                       ></div>
                     </div>
@@ -292,7 +295,7 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
           </div>
         </div>
 
-        <div className="col-xl-6">
+        <div className="col-xl-6" style={{ cursor: 'pointer' }} onClick={() => onNavigate('deals')}>
           <div className="card card-flush h-100">
             <div className="card-header pt-7">
               <h3 className="card-title align-items-start flex-column">
@@ -310,11 +313,10 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
                     </div>
                     <div className="progress h-6px">
                       <div
-                        className={`progress-bar ${
-                          stage === 'Won' ? 'bg-success' :
+                        className={`progress-bar ${stage === 'Won' ? 'bg-success' :
                           stage === 'Lost' ? 'bg-danger' :
-                          stage === 'Invoice' ? 'bg-warning' : 'bg-primary'
-                        }`}
+                            stage === 'Invoice' ? 'bg-warning' : 'bg-primary'
+                          }`}
                         style={{ width: `${stats.totalDeals > 0 ? (count / stats.totalDeals * 100) : 0}%` }}
                       ></div>
                     </div>

@@ -458,7 +458,7 @@ export default function InteractionsList({ onNavigate }: InteractionsListProps) 
           <div className="mb-5">
             <label className="form-label fw-bold fs-6">Type</label>
             <select
-              className="form-select form-select-solid"
+              className="form-select"
               value={formState.type}
               onChange={(e) => setFormState({ ...formState, type: e.target.value })}
             >
@@ -482,7 +482,7 @@ export default function InteractionsList({ onNavigate }: InteractionsListProps) 
           <div className="mb-5">
             <label className="form-label fw-bold fs-6">Team Member</label>
             <select
-              className="form-select form-select-solid"
+              className="form-select"
               value={formState.teamMember}
               onChange={(e) => setFormState({ ...formState, teamMember: e.target.value })}
             >
@@ -495,7 +495,7 @@ export default function InteractionsList({ onNavigate }: InteractionsListProps) 
           <div className="mb-5">
             <label className="form-label fw-bold fs-6">Account</label>
             <select
-              className="form-select form-select-solid"
+              className="form-select"
               value={formState.account}
               onChange={(e) => setFormState({ ...formState, account: e.target.value })}
             >

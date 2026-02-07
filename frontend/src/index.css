@@ -1,23 +1,37 @@
 /* Global Color Scheme: White, Black, Red */
 :root {
-  --color-primary: #dc3545;      /* Red */
-  --color-primary-hover: #c82333; /* Darker red */
-  --color-primary-light: #f8d7da; /* Light red for backgrounds */
+  --color-primary: #dc3545;
+  /* Red */
+  --color-primary-hover: #c82333;
+  /* Darker red */
+  --color-primary-light: #f8d7da;
+  /* Light red for backgrounds */
 
-  --color-secondary: #000000;     /* Black */
-  --color-secondary-hover: #333333; /* Dark gray */
+  --color-secondary: #000000;
+  /* Black */
+  --color-secondary-hover: #333333;
+  /* Dark gray */
 
-  --color-background: #ffffff;    /* White */
-  --color-text: #000000;          /* Black */
-  --color-text-secondary: #666666; /* Gray for secondary text */
+  --color-background: #ffffff;
+  /* White */
+  --color-text: #000000;
+  /* Black */
+  --color-text-secondary: #666666;
+  /* Gray for secondary text */
 
-  --color-border: #dee2e6;        /* Light gray for borders */
-  --color-hover: #f8f9fa;         /* Very light gray for hover states */
+  --color-border: #dee2e6;
+  /* Light gray for borders */
+  --color-hover: #f8f9fa;
+  /* Very light gray for hover states */
 
-  --color-success: #dc3545;       /* Red (same as primary) */
-  --color-danger: #000000;        /* Black */
-  --color-warning: #dc3545;       /* Red */
-  --color-info: #000000;          /* Black */
+  --color-success: #dc3545;
+  /* Red (same as primary) */
+  --color-danger: #000000;
+  /* Black */
+  --color-warning: #dc3545;
+  /* Red */
+  --color-info: #000000;
+  /* Black */
 }
 
 /* Override Bootstrap and custom button colors */
@@ -267,7 +281,7 @@ a:hover {
 
 .modal-actions-bar .btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Modal content sections */
@@ -405,4 +419,19 @@ a:hover {
 .ki-duotone.text-info,
 .ki-duotone.text-warning {
   color: var(--color-primary) !important;
+}
+
+/* Animation for refresh buttons */
+.rotate {
+  animation: rotation 2s infinite linear;
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
 }

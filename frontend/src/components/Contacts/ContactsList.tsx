@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { contactService, activityService, dealsService, teamMemberService } from '../../services/airtable.service';
+import { authService } from '../../services/auth.service';
 import type { Contact, Deal, TeamMember, Activity } from '../../types/airtable.types';
 import Modal from '../Common/Modal';
 
@@ -87,7 +88,8 @@ export default function ContactsList() {
 
       if (formData.name) contactData.Name = formData.name;
       if (formData.email) contactData.Email = formData.email;
-      if (formData.createdBy) contactData['Created by'] = [formData.createdBy];
+      const currentUser = authService.getCurrentUser();
+      if (currentUser?.id) contactData['Created by'] = [currentUser.id];
 
       await contactService.create(contactData as Contact['fields']);
       showFeedback('success', 'Contact has been created successfully.');
@@ -300,7 +302,7 @@ export default function ContactsList() {
           <div className="card-toolbar">
             <div className="d-flex justify-content-end align-items-center gap-3">
               <select
-                className="form-select form-select-solid w-200px"
+                className="form-select w-200px"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -471,26 +473,7 @@ export default function ContactsList() {
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
         </div>
-        <div className="fv-row mb-5">
-          <label className="form-label">
-            <i className="ki-duotone ki-user-tick fs-5 me-1">
-              <span className="path1"></span>
-              <span className="path2"></span>
-              <span className="path3"></span>
-            </i>
-            Created By
-          </label>
-          <select
-            className="form-select form-select-solid"
-            value={formData.createdBy}
-            onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
-          >
-            <option value="">Select creator...</option>
-            {teamMembers.map(member => (
-              <option key={member.id} value={member.id}>{member.fields['Name']}</option>
-            ))}
-          </select>
-        </div>
+        {/* Created By is now automated */}
       </Modal>
 
       {/* Edit Modal */}
@@ -675,15 +658,15 @@ export default function ContactsList() {
             Activity Type
           </label>
           <select
-            className="form-select form-select-solid"
+            className="form-select"
             value={formData.activityType}
             onChange={(e) => setFormData({ ...formData, activityType: e.target.value })}
           >
             <option value="">Select type...</option>
-            <option value="Meeting">📅 Meeting</option>
-            <option value="Phone Call">📞 Phone Call</option>
-            <option value="Call Summary">📝 Call Summary</option>
-            <option value="WhatsApp Chat">💬 WhatsApp Chat</option>
+            <option value="Meeting">Meeting</option>
+            <option value="Phone Call">Phone Call</option>
+            <option value="Call Summary">Call Summary</option>
+            <option value="WhatsApp Chat">WhatsApp Chat</option>
           </select>
         </div>
         <div className="fv-row mb-5">
