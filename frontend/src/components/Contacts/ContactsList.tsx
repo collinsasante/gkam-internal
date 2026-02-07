@@ -14,6 +14,14 @@ export default function ContactsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
 
+  // Pagination & Sorting State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'Created on',
+    direction: 'desc'
+  });
+
   // Dropdown data
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -270,6 +278,35 @@ export default function ContactsList() {
     return matchesSearch && matchesStatus;
   });
 
+  const sortedContacts = [...filteredContacts].sort((a, b) => {
+    let aValue: any = a.fields[sortConfig.key as keyof Contact['fields']];
+    let bValue: any = b.fields[sortConfig.key as keyof Contact['fields']];
+
+    if (sortConfig.key === 'ID') {
+      // Sort by the sequential index which is index + 1
+      const aIdx = contacts.findIndex(c => c.id === a.id);
+      const bIdx = contacts.findIndex(c => c.id === b.id);
+      return sortConfig.direction === 'asc' ? aIdx - bIdx : bIdx - aIdx;
+    }
+
+    if (!aValue) return 1;
+    if (!bValue) return -1;
+
+    if (typeof aValue === 'string') {
+      return sortConfig.direction === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+
+    return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+  });
+
+  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
+  const paginatedContacts = sortedContacts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const getStatusBadgeClass = (status: string) => {
     const statusMap: Record<string, string> = {
       'New Lead': 'badge-light-primary',
@@ -327,19 +364,36 @@ export default function ContactsList() {
       <div className="card">
         <div className="card-header border-0 pt-6">
           <div className="card-title">
-            <div className="d-flex align-items-center position-relative my-1">
+            <div className="d-flex align-items-center position-relative my-1 me-5">
               <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
                 <span className="path1"></span>
                 <span className="path2"></span>
               </i>
               <input
                 type="text"
-                className="form-control form-control-solid w-250px ps-13"
+                className="form-control w-250px ps-13"
                 placeholder="Search contacts..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
+            <select
+              className="form-select w-150px me-5"
+              value={`${sortConfig.key}-${sortConfig.direction}`}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split('-');
+                setSortConfig({ key, direction: direction as 'asc' | 'desc' });
+                setCurrentPage(1);
+              }}
+            >
+              <option value="Created on-desc">📅 Newest First</option>
+              <option value="Created on-asc">⏳ Oldest First</option>
+              <option value="Name-asc">👤 Name (A-Z)</option>
+              <option value="ID-asc">🔢 ID (Low-High)</option>
+            </select>
           </div>
 
           <div className="card-toolbar">
@@ -347,7 +401,10 @@ export default function ContactsList() {
               <select
                 className="form-select w-200px"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="">All Statuses</option>
                 <option value="New Lead">New Lead</option>
@@ -357,12 +414,11 @@ export default function ContactsList() {
                 <option value="Unqualified">Unqualified</option>
               </select>
 
-              <button className="btn btn-light" onClick={loadContacts} disabled={loading}>
-                <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
+              <button className="btn btn-icon btn-custom btn-active-color-primary" onClick={loadContacts} disabled={loading} title="Refresh">
+                <i className={`ki-duotone ki-arrows-circle fs-1 ${loading ? 'rotate' : ''}`}>
                   <span className="path1"></span>
                   <span className="path2"></span>
                 </i>
-                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
 
               <button className="btn btn-primary" onClick={openCreateModal}>
@@ -387,71 +443,100 @@ export default function ContactsList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredContacts.length === 0 ? (
+                {paginatedContacts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-10">
                       <div className="text-gray-600">No contacts found</div>
                     </td>
                   </tr>
                 ) : (
-                  filteredContacts.map((contact, index) => (
-                    <tr
-                      key={contact.id}
-                      onClick={() => openViewModal(contact)}
-                      style={{ cursor: 'pointer' }}
-                      className="hover-bg-light-primary"
-                    >
-                      <td>
-                        <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <div className="symbol symbol-45px me-5">
-                            <div className="symbol-label fs-3 bg-light-primary text-primary">
-                              {contact.fields['Name']?.[0]?.toUpperCase() || '?'}
+                  paginatedContacts.map((contact) => {
+                    const originalIndex = contacts.findIndex(c => c.id === contact.id);
+                    return (
+                      <tr
+                        key={contact.id}
+                        onClick={() => openViewModal(contact)}
+                        style={{ cursor: 'pointer' }}
+                        className="hover-bg-light-primary"
+                      >
+                        <td>
+                          <span className="text-gray-900 fw-bold text-hover-primary fs-6">
+                            CT{originalIndex + 1}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex align-items-center">
+                            <div className="symbol symbol-45px me-5">
+                              <div className="symbol-label fs-3 bg-light-primary text-primary">
+                                {contact.fields['Name']?.[0]?.toUpperCase() || '?'}
+                              </div>
+                            </div>
+                            <div className="d-flex justify-content-start flex-column">
+                              <span className="text-gray-900 fw-bold text-hover-primary fs-6">
+                                {contact.fields['Name'] ? toTitleCase(contact.fields['Name']) : 'N/A'}
+                              </span>
                             </div>
                           </div>
-                          <div className="d-flex justify-content-start flex-column">
-                            <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                              {contact.fields['Name'] ? toTitleCase(contact.fields['Name']) : 'N/A'}
-                            </span>
+                        </td>
+                        <td>
+                          <span className="text-gray-900 fw-bold d-block fs-6">
+                            {contact.fields['Email'] || 'N/A'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="text-gray-900 fw-bold d-block fs-6">
+                            {contact.fields['Phone'] || 'N/A'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex flex-wrap gap-1">
+                            {Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].map((status, index) => (
+                              <span key={index} className={`badge ${getStatusBadgeClass(status)}`}>
+                                {status}
+                              </span>
+                            ))}
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="text-gray-900 fw-bold d-block fs-6">
-                          {contact.fields['Email'] || 'N/A'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="text-gray-900 fw-bold d-block fs-6">
-                          {contact.fields['Phone'] || 'N/A'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="d-flex flex-wrap gap-1">
-                          {Array.isArray(contact.fields['Lead Status']) && contact.fields['Lead Status'].map((status, index) => (
-                            <span key={index} className={`badge ${getStatusBadgeClass(status)}`}>
-                              {status}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="text-gray-600">
-                          {contact.fields['Created on']
-                            ? new Date(contact.fields['Created on']).toLocaleDateString()
-                            : 'N/A'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td>
+                          <span className="text-gray-600">
+                            {contact.fields['Created on']
+                              ? new Date(contact.fields['Created on']).toLocaleDateString()
+                              : 'N/A'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="d-flex justify-content-between align-items-center flex-wrap pt-10">
+              <div className="fs-6 fw-bold text-gray-700">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedContacts.length)} of {sortedContacts.length} entries
+              </div>
+              <ul className="pagination">
+                <li className={`page-item previous ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
+                    <i className="ki-outline ki-left fs-2"></i>
+                  </button>
+                </li>
+                {[...Array(totalPages)].map((_, i) => (
+                  <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
+                    <button className="page-link" onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
+                  </li>
+                ))}
+                <li className={`page-item next ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
+                    <i className="ki-outline ki-right fs-2"></i>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

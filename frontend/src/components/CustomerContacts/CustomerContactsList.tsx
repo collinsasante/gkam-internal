@@ -114,6 +114,7 @@ export default function CustomerContactsList() {
       dataTableRef.current = $(tableRef.current).DataTable({
         info: false,
         order: [[0, 'asc']], // Sort by Customer ID ascending (1 to infinity)
+        pageLength: 50,
         columnDefs: [
           {
             targets: 0,
@@ -122,7 +123,6 @@ export default function CustomerContactsList() {
           },
           { orderable: false, targets: '_all' }, // Disable sorting on all other columns
         ],
-        pageLength: 10,
         language: {
           search: '',
           searchPlaceholder: 'Search contacts...',
@@ -462,12 +462,11 @@ export default function CustomerContactsList() {
                 </i>
                 Add Customer
               </button>
-              <button className="btn btn-light" onClick={loadData} disabled={loading}>
-                <i className={`ki-duotone ki-arrows-loop fs-4 ${loading ? 'rotate' : ''}`}>
+              <button className="btn btn-icon btn-custom btn-active-color-primary" onClick={loadData} disabled={loading} title="Refresh">
+                <i className={`ki-duotone ki-arrows-circle fs-1 ${loading ? 'rotate' : ''}`}>
                   <span className="path1"></span>
                   <span className="path2"></span>
                 </i>
-                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -529,8 +528,8 @@ export default function CustomerContactsList() {
                       className="table-row-hover"
                     >
                       <td>
-                        <span className="text-gray-800 text-hover-primary mb-1">
-                          {index + 1}
+                        <span className="text-gray-900 fw-bold text-hover-primary fs-6">
+                          CU{index + 1}
                         </span>
                       </td>
                       <td>

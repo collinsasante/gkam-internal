@@ -119,12 +119,11 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-6">
         <h1 className="mb-0">Sales Pipeline Dashboard</h1>
-        <button className="btn btn-sm btn-light" onClick={loadStats} disabled={loading}>
-          <i className={`ki-duotone ki-arrows-circle fs-2 ${loading ? 'rotate' : ''}`}>
+        <button className="btn btn-icon btn-custom btn-active-color-primary" onClick={loadStats} disabled={loading} title="Refresh">
+          <i className={`ki-duotone ki-arrows-circle fs-1 ${loading ? 'rotate' : ''}`}>
             <span className="path1"></span>
             <span className="path2"></span>
           </i>
-          {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
