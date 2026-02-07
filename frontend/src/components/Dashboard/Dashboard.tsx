@@ -48,6 +48,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const loadAllData = async () => {
     try {
       setLoading(true);
+      const startTime = Date.now();
 
       // Fetch data with error handling for tables that might not be accessible
       const results = await Promise.allSettled([
@@ -81,6 +82,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       const activeAccounts = accounts.filter(a => a.fields['Account Status'] === 'Active').length;
       const completedTasks = tasks.filter(t => t.fields['Status'] === 'Done').length;
       const approvedForms = labelForms.filter(f => f.fields['Artwork Status'] === 'Approved').length;
+
+      // Ensure loading state lasts at least 600ms for animation visibility
+      const duration = Date.now() - startTime;
+      if (duration < 600) {
+        await new Promise(resolve => setTimeout(resolve, 600 - duration));
+      }
 
       setStats({
         totalContacts: contacts.length,

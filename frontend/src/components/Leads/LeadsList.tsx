@@ -80,10 +80,18 @@ export default function LeadsList() {
   const loadData = async () => {
     try {
       setLoading(true);
+      const startTime = Date.now();
       const [leadsData, teamMembersData] = await Promise.all([
         leadsService.getAll(),
         teamMemberService.getAll(),
       ]);
+
+      // Ensure loading state lasts at least 600ms for animation visibility
+      const duration = Date.now() - startTime;
+      if (duration < 600) {
+        await new Promise(resolve => setTimeout(resolve, 600 - duration));
+      }
+
       setLeads(leadsData);
       setTeamMembers(teamMembersData);
       setError(null);
@@ -361,10 +369,10 @@ export default function LeadsList() {
                 setSortConfig({ key, direction: direction as 'asc' | 'desc' });
               }}
             >
-              <option value="Created on-desc">📅 Newest First</option>
-              <option value="Created on-asc">⏳ Oldest First</option>
-              <option value="Company-asc">🏢 Company (A-Z)</option>
-              <option value="Contact-asc">👤 Name (A-Z)</option>
+              <option value="Created on-desc">Newest First</option>
+              <option value="Created on-asc">Oldest First</option>
+              <option value="Company-asc">Company (A-Z)</option>
+              <option value="Contact-asc">Name (A-Z)</option>
             </select>
             <button className="btn btn-icon btn-custom btn-active-color-primary" onClick={loadData} disabled={loading} title="Refresh">
               <i className={`ki-duotone ki-arrows-circle fs-1 ${loading ? 'rotate' : ''}`}>

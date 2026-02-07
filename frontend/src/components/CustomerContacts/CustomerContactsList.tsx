@@ -143,11 +143,19 @@ export default function CustomerContactsList() {
   const loadData = async () => {
     try {
       setLoading(true);
+      const startTime = Date.now();
       // Load both contacts and team members
       const [contactsData, teamMembersData] = await Promise.all([
         customerContactService.getAll(),
         teamMemberService.getAll(),
       ]);
+
+      // Ensure loading state lasts at least 600ms for animation visibility
+      const duration = Date.now() - startTime;
+      if (duration < 600) {
+        await new Promise(resolve => setTimeout(resolve, 600 - duration));
+      }
+
       setContacts(contactsData);
       setTeamMembers(teamMembersData);
     } catch (err) {

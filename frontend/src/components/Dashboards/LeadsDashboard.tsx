@@ -41,6 +41,7 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
   const loadStats = async () => {
     try {
       setLoading(true);
+      const startTime = Date.now();
       const [contacts, leads, deals, activities] = await Promise.all([
         contactService.getAll(),
         leadsService.getAll(),
@@ -72,6 +73,12 @@ export default function LeadsDashboard({ onNavigate }: DashboardProps) {
       const wonDeals = deals.filter(d => d.fields['Stage'] === 'Won');
       const wonValue = wonDeals.reduce((sum, d) => sum + (d.fields['Amount'] || 0), 0);
       const dealValue = deals.reduce((sum, d) => sum + (d.fields['Amount'] || 0), 0);
+
+      // Ensure loading state lasts at least 600ms for animation visibility
+      const duration = Date.now() - startTime;
+      if (duration < 600) {
+        await new Promise(resolve => setTimeout(resolve, 600 - duration));
+      }
 
       setStats({
         totalContacts: contacts.length,

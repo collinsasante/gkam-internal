@@ -61,7 +61,15 @@ export default function ContactsList() {
   const loadContacts = async () => {
     try {
       setLoading(true);
+      const startTime = Date.now();
       const data = await contactService.getAll();
+
+      // Ensure loading state lasts at least 600ms for animation visibility
+      const duration = Date.now() - startTime;
+      if (duration < 600) {
+        await new Promise(resolve => setTimeout(resolve, 600 - duration));
+      }
+
       setContacts(data);
       setError(null);
     } catch (err) {
@@ -389,10 +397,10 @@ export default function ContactsList() {
                 setCurrentPage(1);
               }}
             >
-              <option value="Created on-desc">📅 Newest First</option>
-              <option value="Created on-asc">⏳ Oldest First</option>
-              <option value="Name-asc">👤 Name (A-Z)</option>
-              <option value="ID-asc">🔢 ID (Low-High)</option>
+              <option value="Created on-desc">Newest First</option>
+              <option value="Created on-asc">Oldest First</option>
+              <option value="Name-asc">Name (A-Z)</option>
+              <option value="ID-asc">ID (Low-High)</option>
             </select>
           </div>
 
