@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { dealsService, teamMemberService } from '../../services/airtable.service';
-import type { Deal, TeamMember } from '../../types/airtable.types';
+import { dealsService, teamMemberService, contactService } from '../../services/airtable.service';
+import type { Deal, TeamMember, Contact } from '../../types/airtable.types';
 import SkeletonLoader from '../Common/SkeletonLoader';
 import Modal from '../Common/Modal';
 
@@ -18,6 +18,7 @@ export default function DealsList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // Form State
   const [editForm, setEditForm] = useState({
@@ -68,9 +69,23 @@ export default function DealsList() {
     }
   };
 
-  const handleCardClick = (deal: Deal) => {
+  const handleCardClick = async (deal: Deal) => {
     setSelectedDeal(deal);
     setIsDetailsModalOpen(true);
+
+    // Fetch linked contact to get the actual Contact ID
+    const contactIds = (deal.fields as any)['Contact'];
+    if (Array.isArray(contactIds) && contactIds.length > 0) {
+      try {
+        const contact = await contactService.getById(contactIds[0]);
+        setSelectedContact(contact);
+      } catch (error) {
+        console.error('Error fetching contact:', error);
+        setSelectedContact(null);
+      }
+    } else {
+      setSelectedContact(null);
+    }
   };
 
   const handleOpenEditModal = () => {
@@ -546,6 +561,10 @@ export default function DealsList() {
                   <div className="col-6">
                     <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
                     <div className="text-gray-800 fs-6 mt-1">{getFieldValue((selectedDeal.fields as any)['Phone Number'])}</div>
+                  </div>
+                  <div className="col-6">
+                    <label className="text-muted fs-7 fw-semibold d-block">Contact ID</label>
+                    <div className="text-gray-800 fs-6 mt-1">{selectedContact?.fields['Contact ID'] || 'N/A'}</div>
                   </div>
                 </div>
               </div>
