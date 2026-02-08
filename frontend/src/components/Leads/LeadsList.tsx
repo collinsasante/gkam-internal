@@ -134,9 +134,24 @@ export default function LeadsList() {
     }
   };
 
-  const handleCardClick = (lead: Lead) => {
+  const handleCardClick = async (lead: Lead) => {
+    console.log('DEBUG: Selected Lead Data:', lead);
     setSelectedLead(lead);
     setIsDetailsModalOpen(true);
+
+    // Fetch linked contact info if available to get Contact ID for details
+    if (lead.fields['Lead'] && Array.isArray(lead.fields['Lead']) && lead.fields['Lead'].length > 0) {
+      try {
+        const contactId = lead.fields['Lead'][0];
+        const contact = await contactService.getById(contactId);
+        setSelectedContact(contact);
+      } catch (error) {
+        console.error('Error fetching linked contact:', error);
+        setSelectedContact(null);
+      }
+    } else {
+      setSelectedContact(null);
+    }
   };
 
   const handleEditClick = (lead: Lead) => {
@@ -419,23 +434,18 @@ export default function LeadsList() {
                         style={{ transition: 'all 0.2s ease' }}
                       >
                         <div className="card-body p-5">
-                          {/* Contact Name */}
-                          <div className="d-flex align-items-center mb-3">
-                            <div className="symbol symbol-40px me-3">
-                              <div className="symbol-label fs-5 fw-bold bg-light-primary text-primary">
-                                {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-                                  ? lead.fields['Contact'][0][0]?.toUpperCase()
-                                  : '?'}
-                              </div>
-                            </div>
-                            <div className="flex-grow-1">
-                              <span className="text-gray-900 fw-bold d-block fs-6">
-                                {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-                                  ? lead.fields['Contact'][0]
-                                  : 'N/A'}
-                              </span>
-                              {lead.fields['Title'] && (
-                                <span className="text-muted fs-7">{lead.fields['Title']}</span>
+                          {/* Contact Name & Title/Company */}
+                          <div className="mb-3">
+                            <h4 className="fs-6 fw-bold text-gray-800 mb-1">
+                              {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
+                                ? lead.fields['Contact'][0]
+                                : 'N/A'}
+                            </h4>
+                            <div className="d-flex flex-column">
+                              {(lead.fields['Company'] || lead.fields['Title']) && (
+                                <span className="text-muted fs-7">
+                                  {lead.fields['Company']}{lead.fields['Company'] && lead.fields['Title'] ? ' • ' : ''}{lead.fields['Title']}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -510,7 +520,7 @@ export default function LeadsList() {
                             )}
                             {column.status !== 'Unqualified' && (
                               <button
-                                className="btn btn-sm btn-light-danger"
+                                className="btn btn-sm btn-light-danger flex-grow-1"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleUpdateStatus(lead.id, 'Unqualified');
@@ -521,6 +531,7 @@ export default function LeadsList() {
                                   <span className="path1"></span>
                                   <span className="path2"></span>
                                 </i>
+                                Unqualified
                               </button>
                             )}
                             <button
@@ -635,22 +646,70 @@ export default function LeadsList() {
                 </h6>
               </div>
               <div className="card-body p-4">
+                <div className="mb-4">
+                  <h2 className="text-gray-900 fw-bolder fs-1 mb-0">
+                    {Array.isArray(selectedLead.fields['Contact']) ? selectedLead.fields['Contact'][0] : (selectedLead.fields['Contact'] || 'N/A')}
+                  </h2>
+                  <div className="text-muted fs-6 fw-semibold">
+                    {selectedLead.fields['Company'] || 'N/A'} {selectedLead.fields['Title'] ? `• ${selectedLead.fields['Title']}` : ''}
+                  </div>
+                </div>
+
+                <div className="separator separator-dashed my-4"></div>
+
                 <div className="row g-3">
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold">Company</label>
-                    <div className="text-gray-800 fw-bold">{selectedLead.fields['Company'] || 'N/A'}</div>
+                  <div className="col-12">
+                    <div className="d-flex align-items-center mb-2">
+                      <div className="symbol symbol-30px me-3">
+                        <div className="symbol-label bg-light-success">
+                          <i className="ki-duotone ki-phone fs-4 text-success">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted fs-7 fw-semibold">Phone</span>
+                        <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Phone'] || 'N/A'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold">Title</label>
-                    <div className="text-gray-800">{selectedLead.fields['Title'] || 'N/A'}</div>
+
+                  <div className="col-12">
+                    <div className="d-flex align-items-center mb-2">
+                      <div className="symbol symbol-30px me-3">
+                        <div className="symbol-label bg-light-primary">
+                          <i className="ki-duotone ki-sms fs-4 text-primary">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted fs-7 fw-semibold">Email</span>
+                        <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Email'] || 'N/A'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold">Email</label>
-                    <div className="text-gray-800">{selectedLead.fields['Email'] || 'N/A'}</div>
-                  </div>
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold">Phone</label>
-                    <div className="text-gray-800">{selectedLead.fields['Phone'] || 'N/A'}</div>
+
+                  <div className="col-12">
+                    <div className="d-flex align-items-center mb-2">
+                      <div className="symbol symbol-30px me-3">
+                        <div className="symbol-label bg-light-info">
+                          <i className="ki-duotone ki-fingerprint fs-4 text-info">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                            <span className="path3"></span>
+                          </i>
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted fs-7 fw-semibold">Contact ID</span>
+                        <span className="text-gray-800 fw-bold fs-6">
+                          {selectedContact?.fields['Contact ID'] || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -795,7 +795,7 @@ export default function ContactsList() {
         }
         size="lg"
       >
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label required fw-bold fs-6 mb-2 text-muted">
             <i className="ki-duotone ki-note-2 fs-4 me-2">
               <span className="path1"></span>
@@ -803,13 +803,13 @@ export default function ContactsList() {
               <span className="path3"></span>
               <span className="path4"></span>
             </i>
-            Activity Summary (Auto-generated in Airtable)
+            Activity Summary
           </label>
           <div className="form-control form-control-solid bg-light text-muted">
             {formData.activity || 'Activity description will be summarized...'}
           </div>
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label required fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-abstract-26 fs-4 me-2">
               <span className="path1"></span>
@@ -825,7 +825,7 @@ export default function ContactsList() {
             onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
           />
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label required fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-category fs-4 me-2">
               <span className="path1"></span>
@@ -847,7 +847,7 @@ export default function ContactsList() {
             <option value="WhatsApp Chat">WhatsApp Chat</option>
           </select>
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-check-circle fs-4 me-2">
               <span className="path1"></span>
@@ -864,7 +864,7 @@ export default function ContactsList() {
             <option value="Done">Done</option>
           </select>
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <div className="d-flex align-items-center justify-content-between mb-2">
             <label className="form-label fw-bold fs-6 mb-0">
               <i className="ki-duotone ki-double-check fs-4 me-2">
@@ -938,7 +938,7 @@ export default function ContactsList() {
             </div>
           )}
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-user-tick fs-4 me-2">
               <span className="path1"></span>
@@ -958,7 +958,7 @@ export default function ContactsList() {
             ))}
           </select>
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-calendar fs-4 me-2">
               <span className="path1"></span>
@@ -973,7 +973,7 @@ export default function ContactsList() {
             onChange={(e) => setFormData({ ...formData, createdOn: e.target.value })}
           />
         </div>
-        <div className="fv-row mb-5">
+        <div>
           <label className="form-label fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-text-align-left fs-4 me-2">
               <span className="path1"></span>
