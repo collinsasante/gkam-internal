@@ -406,22 +406,17 @@ export default function LeadsList() {
               const columnLeads = getLeadsByStatus(column.status);
               return (
                 <div key={column.status} className="flex-shrink-0" style={{ width: '320px' }}>
-                  <div className="mb-4">
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <div className="d-flex align-items-center">
-                        <div
-                          className="rounded-circle me-2"
-                          style={{
-                            width: '12px',
-                            height: '12px',
-                            backgroundColor: getColumnColor(column.status),
-                          }}
-                        ></div>
-                        <h3 className="fs-5 fw-bold mb-0">{column.title}</h3>
+                  {/* Column Header */}
+                  <div
+                    className="card mb-3"
+                    style={{ borderTop: `3px solid ${getColumnColor(column.status)}` }}
+                  >
+                    <div className="card-body p-4">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <h3 className="fs-5 fw-bold text-gray-800 mb-0">{column.title}</h3>
+                        <span className="badge badge-light-primary">{columnLeads.length}</span>
                       </div>
-                      <span className="badge badge-light-primary">{columnLeads.length}</span>
                     </div>
-                    <div className="separator separator-dashed mb-4"></div>
                   </div>
 
                   {/* Column Cards */}
@@ -451,27 +446,26 @@ export default function LeadsList() {
                           </div>
 
                           {/* Owner */}
-                          <div className="d-flex align-items-center mb-2">
+                          <div className="d-flex align-items-center mb-3">
+                            <i className="ki-duotone ki-user fs-4 text-gray-500 me-2">
+                              <span className="path1"></span>
+                              <span className="path2"></span>
+                            </i>
                             <span
-                              className="text-gray-600 fs-7 cursor-pointer text-hover-primary"
+                              className="text-gray-700 fs-7 cursor-pointer text-hover-primary"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleAssignOwner(lead.id, lead.fields['Owner']);
                               }}
-                              title="Click to assign owner"
                             >
-                              <i className="ki-duotone ki-user fs-6 me-1 text-primary">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
                               {getOwnerName(lead.fields['Owner'])}
                             </span>
                           </div>
 
                           {/* Phone */}
                           {lead.fields['Phone'] && (
-                            <div className="mb-3">
-                              <i className="ki-duotone ki-phone fs-6 text-success me-2">
+                            <div className="d-flex align-items-center mb-3">
+                              <i className="ki-duotone ki-phone fs-4 text-success me-2">
                                 <span className="path1"></span>
                                 <span className="path2"></span>
                               </i>
@@ -481,8 +475,8 @@ export default function LeadsList() {
 
                           {/* Company */}
                           {lead.fields['Company'] && (
-                            <div className="mb-2">
-                              <i className="ki-duotone ki-shop fs-6 text-gray-500 me-2">
+                            <div className="d-flex align-items-center mb-3">
+                              <i className="ki-duotone ki-shop fs-4 text-gray-500 me-2">
                                 <span className="path1"></span>
                                 <span className="path2"></span>
                               </i>
@@ -492,8 +486,8 @@ export default function LeadsList() {
 
                           {/* Email */}
                           {lead.fields['Email'] && (
-                            <div className="mb-3">
-                              <i className="ki-duotone ki-sms fs-6 text-gray-500 me-2">
+                            <div className="d-flex align-items-center mb-3">
+                              <i className="ki-duotone ki-sms fs-4 text-gray-500 me-2">
                                 <span className="path1"></span>
                                 <span className="path2"></span>
                               </i>
@@ -502,6 +496,7 @@ export default function LeadsList() {
                           )}
 
                           {/* Actions */}
+                          <div className="separator separator-dashed my-3"></div>
                           <div className="d-flex gap-2">
                             {column.status !== 'Qualified' && (
                               <button
@@ -659,56 +654,25 @@ export default function LeadsList() {
 
                 <div className="row g-3">
                   <div className="col-12">
-                    <div className="d-flex align-items-center mb-2">
-                      <div className="symbol symbol-30px me-3">
-                        <div className="symbol-label bg-light-success">
-                          <i className="ki-duotone ki-phone fs-4 text-success">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                          </i>
-                        </div>
-                      </div>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted fs-7 fw-semibold">Phone</span>
-                        <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Phone'] || 'N/A'}</span>
-                      </div>
+                    <div className="d-flex flex-column gap-1">
+                      <span className="text-muted fs-7 fw-semibold">Phone</span>
+                      <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Phone'] || 'N/A'}</span>
                     </div>
                   </div>
 
                   <div className="col-12">
-                    <div className="d-flex align-items-center mb-2">
-                      <div className="symbol symbol-30px me-3">
-                        <div className="symbol-label bg-light-primary">
-                          <i className="ki-duotone ki-sms fs-4 text-primary">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                          </i>
-                        </div>
-                      </div>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted fs-7 fw-semibold">Email</span>
-                        <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Email'] || 'N/A'}</span>
-                      </div>
+                    <div className="d-flex flex-column gap-1">
+                      <span className="text-muted fs-7 fw-semibold">Email</span>
+                      <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Email'] || 'N/A'}</span>
                     </div>
                   </div>
 
                   <div className="col-12">
-                    <div className="d-flex align-items-center mb-2">
-                      <div className="symbol symbol-30px me-3">
-                        <div className="symbol-label bg-light-info">
-                          <i className="ki-duotone ki-fingerprint fs-4 text-info">
-                            <span className="path1"></span>
-                            <span className="path2"></span>
-                            <span className="path3"></span>
-                          </i>
-                        </div>
-                      </div>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted fs-7 fw-semibold">Contact ID</span>
-                        <span className="text-gray-800 fw-bold fs-6">
-                          {selectedContact?.fields['Contact ID'] || 'N/A'}
-                        </span>
-                      </div>
+                    <div className="d-flex flex-column gap-1">
+                      <span className="text-muted fs-7 fw-semibold">Contact ID</span>
+                      <span className="text-gray-800 fw-bold fs-6">
+                        {selectedContact?.fields['Contact ID'] || 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </div>
