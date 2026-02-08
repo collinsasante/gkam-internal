@@ -144,6 +144,7 @@ export default function LeadsList() {
       try {
         const contactId = lead.fields['Lead'][0];
         const contact = await contactService.getById(contactId);
+        console.log('DEBUG: Fetched Contact for Lead:', contact);
         setSelectedContact(contact);
       } catch (error) {
         console.error('Error fetching linked contact:', error);
@@ -399,194 +400,193 @@ export default function LeadsList() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-body py-4">
-          <div className="d-flex gap-5 overflow-auto pb-5" style={{ minHeight: '600px' }}>
-            {columns.map((column) => {
-              const columnLeads = getLeadsByStatus(column.status);
-              return (
-                <div key={column.status} className="flex-shrink-0" style={{ width: '320px' }}>
-                  {/* Column Header */}
-                  <div
-                    className="card mb-3"
-                    style={{ borderTop: `3px solid ${getColumnColor(column.status)}` }}
-                  >
-                    <div className="card-body p-4">
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <h3 className="fs-5 fw-bold text-gray-800 mb-0">{column.title}</h3>
-                        <span className="badge badge-light-primary">{columnLeads.length}</span>
-                      </div>
-                    </div>
+      <div className="d-flex gap-5 overflow-auto pb-5" style={{ minHeight: '600px' }}>
+        {columns.map((column) => {
+          const columnLeads = getLeadsByStatus(column.status);
+          return (
+            <div key={column.status} className="flex-shrink-0" style={{ width: '320px' }}>
+              {/* Column Header */}
+              <div
+                className="card mb-3"
+                style={{ borderTop: `3px solid ${getColumnColor(column.status)}` }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <h3 className="fs-5 fw-bold text-gray-800 mb-0">{column.title}</h3>
+                    <span className="badge badge-light-primary">{columnLeads.length}</span>
                   </div>
+                  <div className="text-gray-600 fs-7 fw-semibold">
+                    {columnLeads.length} Lead{columnLeads.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              </div>
 
-                  {/* Column Cards */}
-                  <div className="d-flex flex-column gap-3">
-                    {columnLeads.map((lead) => (
-                      <div
-                        key={lead.id}
-                        className="card card-flush cursor-pointer hover-elevate-up"
-                        onClick={() => handleCardClick(lead)}
-                        style={{ transition: 'all 0.2s ease' }}
-                      >
-                        <div className="card-body p-5">
-                          {/* Contact Name & Title/Company */}
-                          <div className="mb-3">
-                            <h4 className="fs-6 fw-bold text-gray-800 mb-1">
-                              {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
-                                ? lead.fields['Contact'][0]
-                                : 'N/A'}
-                            </h4>
-                            <div className="d-flex flex-column">
-                              {(lead.fields['Company'] || lead.fields['Title']) && (
-                                <span className="text-muted fs-7">
-                                  {lead.fields['Company']}{lead.fields['Company'] && lead.fields['Title'] ? ' • ' : ''}{lead.fields['Title']}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+              {/* Column Cards */}
+              <div className="d-flex flex-column gap-3">
+                {columnLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    className="card card-flush cursor-pointer hover-elevate-up"
+                    onClick={() => handleCardClick(lead)}
+                    style={{ transition: 'all 0.2s ease' }}
+                  >
+                    <div className="card-body p-5">
+                      {/* Contact Name & Title/Company */}
+                      <div className="mb-3">
+                        <h4 className="fs-6 fw-bold text-gray-800 mb-1">
+                          {Array.isArray(lead.fields['Contact']) && lead.fields['Contact'].length > 0
+                            ? lead.fields['Contact'][0]
+                            : 'N/A'}
+                        </h4>
+                        <div className="d-flex flex-column">
+                          {(lead.fields['Company'] || lead.fields['Title']) && (
+                            <span className="text-muted fs-7">
+                              {lead.fields['Company']}{lead.fields['Company'] && lead.fields['Title'] ? ' • ' : ''}{lead.fields['Title']}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                          {/* Owner */}
-                          <div className="d-flex align-items-center mb-3">
-                            <i className="ki-duotone ki-user fs-4 text-gray-500 me-2">
+                      {/* Owner */}
+                      <div className="d-flex align-items-center mb-3">
+                        <i className="ki-duotone ki-user fs-4 text-gray-500 me-2">
+                          <span className="path1"></span>
+                          <span className="path2"></span>
+                        </i>
+                        <span
+                          className="text-gray-700 fs-7 cursor-pointer text-hover-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAssignOwner(lead.id, lead.fields['Owner']);
+                          }}
+                        >
+                          {getOwnerName(lead.fields['Owner'])}
+                        </span>
+                      </div>
+
+                      {/* Phone */}
+                      {lead.fields['Phone'] && (
+                        <div className="d-flex align-items-center mb-3">
+                          <i className="ki-duotone ki-phone fs-4 text-success me-2">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                          <span className="text-gray-700 fs-7 fw-bold">{lead.fields['Phone']}</span>
+                        </div>
+                      )}
+
+                      {/* Company */}
+                      {lead.fields['Company'] && (
+                        <div className="d-flex align-items-center mb-3">
+                          <i className="ki-duotone ki-shop fs-4 text-gray-500 me-2">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                          <span className="text-gray-700 fs-7">{lead.fields['Company']}</span>
+                        </div>
+                      )}
+
+                      {/* Email */}
+                      {lead.fields['Email'] && (
+                        <div className="d-flex align-items-center mb-3">
+                          <i className="ki-duotone ki-sms fs-4 text-gray-500 me-2">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                          <span className="text-gray-700 fs-7">{lead.fields['Email']}</span>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="separator separator-dashed my-3"></div>
+                      <div className="d-flex gap-2">
+                        {column.status !== 'Qualified' && (
+                          <button
+                            className="btn btn-sm btn-light-success flex-grow-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewContact(lead);
+                            }}
+                          >
+                            <i className="ki-duotone ki-arrow-right fs-5">
                               <span className="path1"></span>
                               <span className="path2"></span>
                             </i>
-                            <span
-                              className="text-gray-700 fs-7 cursor-pointer text-hover-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAssignOwner(lead.id, lead.fields['Owner']);
-                              }}
-                            >
-                              {getOwnerName(lead.fields['Owner'])}
-                            </span>
-                          </div>
-
-                          {/* Phone */}
-                          {lead.fields['Phone'] && (
-                            <div className="d-flex align-items-center mb-3">
-                              <i className="ki-duotone ki-phone fs-4 text-success me-2">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
-                              <span className="text-gray-700 fs-7 fw-bold">{lead.fields['Phone']}</span>
-                            </div>
-                          )}
-
-                          {/* Company */}
-                          {lead.fields['Company'] && (
-                            <div className="d-flex align-items-center mb-3">
-                              <i className="ki-duotone ki-shop fs-4 text-gray-500 me-2">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
-                              <span className="text-gray-700 fs-7">{lead.fields['Company']}</span>
-                            </div>
-                          )}
-
-                          {/* Email */}
-                          {lead.fields['Email'] && (
-                            <div className="d-flex align-items-center mb-3">
-                              <i className="ki-duotone ki-sms fs-4 text-gray-500 me-2">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
-                              <span className="text-gray-700 fs-7">{lead.fields['Email']}</span>
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          <div className="separator separator-dashed my-3"></div>
-                          <div className="d-flex gap-2">
-                            {column.status !== 'Qualified' && (
-                              <button
-                                className="btn btn-sm btn-light-success flex-grow-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewContact(lead);
-                                }}
-                              >
-                                <i className="ki-duotone ki-arrow-right fs-5">
-                                  <span className="path1"></span>
-                                  <span className="path2"></span>
-                                </i>
-                                View Contact
-                              </button>
-                            )}
-                            {column.status !== 'Unqualified' && (
-                              <button
-                                className="btn btn-sm btn-light-danger flex-grow-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleUpdateStatus(lead.id, 'Unqualified');
-                                }}
-                                title="Mark as Unqualified"
-                              >
-                                <i className="ki-duotone ki-cross fs-5">
-                                  <span className="path1"></span>
-                                  <span className="path2"></span>
-                                </i>
-                                Unqualified
-                              </button>
-                            )}
-                            <button
-                              className="btn btn-sm btn-light"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditClick(lead);
-                              }}
-                              title="Edit Lead"
-                            >
-                              <i className="ki-duotone ki-pencil fs-5">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
-                            </button>
-                            <button
-                              className="btn btn-sm btn-light-danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteClick(lead.id);
-                              }}
-                              title="Delete Lead"
-                            >
-                              <i className="ki-duotone ki-trash fs-5">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                                <span className="path3"></span>
-                                <span className="path4"></span>
-                                <span className="path5"></span>
-                              </i>
-                            </button>
-                          </div>
-
-                          {/* Created Date */}
-                          <div className="text-muted fs-8 mt-3">
-                            {lead.fields['Created on']
-                              ? new Date(lead.fields['Created on']).toLocaleDateString()
-                              : ''}
-                          </div>
-                        </div>
+                            View Contact
+                          </button>
+                        )}
+                        {column.status !== 'Unqualified' && (
+                          <button
+                            className="btn btn-sm btn-light-danger flex-grow-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(lead.id, 'Unqualified');
+                            }}
+                            title="Mark as Unqualified"
+                          >
+                            <i className="ki-duotone ki-cross fs-5">
+                              <span className="path1"></span>
+                              <span className="path2"></span>
+                            </i>
+                            Unqualified
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm btn-light"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(lead);
+                          }}
+                          title="Edit Lead"
+                        >
+                          <i className="ki-duotone ki-pencil fs-5">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                        </button>
+                        <button
+                          className="btn btn-sm btn-light-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(lead.id);
+                          }}
+                          title="Delete Lead"
+                        >
+                          <i className="ki-duotone ki-trash fs-5">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                            <span className="path3"></span>
+                            <span className="path4"></span>
+                            <span className="path5"></span>
+                          </i>
+                        </button>
                       </div>
-                    ))}
 
-                    {/* Empty State */}
-                    {columnLeads.length === 0 && (
-                      <div className="text-center py-10 text-muted">
-                        No leads in this stage
+                      {/* Created Date */}
+                      <div className="text-muted fs-8 mt-3">
+                        {lead.fields['Created on']
+                          ? new Date(lead.fields['Created on']).toLocaleDateString()
+                          : ''}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
 
-          <div className="d-flex justify-content-between align-items-center mt-5">
-            <div className="text-gray-600">
-              Total: {leads.length} lead{leads.length !== 1 ? 's' : ''}
+                {/* Empty State */}
+                {columnLeads.length === 0 && (
+                  <div className="text-center py-10 text-muted">
+                    No leads in this stage
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          );
+        })}
+      </div>
+
+      <div className="d-flex justify-content-between align-items-center mt-5">
+        <div className="text-gray-600 fw-semibold">
+          Total: {leads.length} lead{leads.length !== 1 ? 's' : ''}
         </div>
       </div>
 
@@ -671,7 +671,9 @@ export default function LeadsList() {
                     <div className="d-flex flex-column gap-1">
                       <span className="text-muted fs-7 fw-semibold">Contact ID</span>
                       <span className="text-gray-800 fw-bold fs-6">
-                        {selectedContact?.fields['Contact ID'] || 'N/A'}
+                        {Array.isArray(selectedContact?.fields['Contact ID'])
+                          ? selectedContact?.fields['Contact ID'][0]
+                          : (selectedContact?.fields['Contact ID'] || 'N/A')}
                       </span>
                     </div>
                   </div>
@@ -912,7 +914,7 @@ export default function LeadsList() {
           <div className="text-start">
             <p><strong>Phone:</strong> {selectedContact.fields['Phone'] || 'N/A'}</p>
             <p><strong>Email:</strong> {selectedContact.fields['Email'] || 'N/A'}</p>
-            <p><strong>Contact ID:</strong> {selectedContact.fields['Contact ID'] || 'N/A'}</p>
+            <p><strong>Contact ID:</strong> {Array.isArray(selectedContact.fields['Contact ID']) ? selectedContact.fields['Contact ID'][0] : (selectedContact.fields['Contact ID'] || 'N/A')}</p>
             <p><strong>Created:</strong> {selectedContact.fields['Created on'] ? new Date(selectedContact.fields['Created on']).toLocaleDateString() : 'N/A'}</p>
             {selectedContact.fields['Lead Status'] && Array.isArray(selectedContact.fields['Lead Status']) && (
               <p><strong>Status:</strong> {selectedContact.fields['Lead Status'].join(', ')}</p>

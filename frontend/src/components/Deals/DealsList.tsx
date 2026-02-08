@@ -77,7 +77,9 @@ export default function DealsList() {
     const contactIds = (deal.fields as any)['Contact'];
     if (Array.isArray(contactIds) && contactIds.length > 0) {
       try {
-        const contact = await contactService.getById(contactIds[0]);
+        const contactId = contactIds[0];
+        const contact = await contactService.getById(contactId);
+        console.log('DEBUG: Fetched Contact for Deal:', contact);
         setSelectedContact(contact);
       } catch (error) {
         console.error('Error fetching contact:', error);
@@ -564,7 +566,11 @@ export default function DealsList() {
                   </div>
                   <div className="col-6">
                     <label className="text-muted fs-7 fw-semibold d-block">Contact ID</label>
-                    <div className="text-gray-800 fs-6 mt-1">{selectedContact?.fields['Contact ID'] || 'N/A'}</div>
+                    <div className="text-gray-800 fs-6 mt-1">
+                      {Array.isArray(selectedContact?.fields['Contact ID'])
+                        ? selectedContact?.fields['Contact ID'][0]
+                        : (selectedContact?.fields['Contact ID'] || 'N/A')}
+                    </div>
                   </div>
                 </div>
               </div>
