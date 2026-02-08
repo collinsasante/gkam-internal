@@ -31,6 +31,12 @@ export default function ContactsList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isCreateDealInActivity, setIsCreateDealInActivity] = useState(false);
+  const [newDealData, setNewDealData] = useState({
+    title: '',
+    value: '',
+    stage: 'New' as const,
+  });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
 
@@ -196,6 +202,8 @@ export default function ContactsList() {
     });
     setIsViewModalOpen(false);
     setIsActivityModalOpen(true);
+    setIsCreateDealInActivity(false); // Reset this state
+    setNewDealData({ title: '', value: '', stage: 'New' }); // Reset new deal data
   };
 
   const handleActivitySubmit = async () => {
@@ -206,18 +214,31 @@ export default function ContactsList() {
     }
 
     try {
-      const activityNumber = `ACT-${Date.now()}`;
-      const activityData: Partial<Activity['fields']> & { 'Activity Number': string } = {
-        'Activity Number': activityNumber,
-        'Activity': formData.activity,
+      setLoading(true);
+
+      // Handle new deal creation if requested
+      let dealId = formData.relatedDeals;
+      if (isCreateDealInActivity && newDealData.title) {
+        const deal = await dealsService.create({
+          'Deal Name': newDealData.title,
+          'Amount': newDealData.value ? parseFloat(newDealData.value) : 0,
+          'Stage': newDealData.stage,
+          'Contact': [selectedContact.id],
+          'Deal Owner': formData.owner ? [formData.owner] : undefined,
+        });
+        dealId = deal.id;
+      }
+
+      const activityData: any = {
+        'Activity': formData.activity, // Description
         'Activity Type': formData.activityType,
         'Status': formData.activityStatus,
-        'Contact 2': [selectedContact.id],
+        'Owner': formData.owner ? [formData.owner] : [],
+        'Contact': [selectedContact.id],
+        'Related Deals': dealId ? [dealId] : [],
+        'Created on': formData.createdOn || new Date().toISOString(),
       };
 
-      if (formData.activitySummary) activityData['Activity Summary (Activity)'] = formData.activitySummary;
-      if (formData.relatedDeals) activityData['Related Deals'] = [formData.relatedDeals];
-      if (formData.owner) activityData['Owner'] = [formData.owner];
       if (formData.createdOn) {
         try {
           const parsedDate = new Date(formData.createdOn);
@@ -225,7 +246,7 @@ export default function ContactsList() {
             activityData['Start time'] = parsedDate.toISOString();
           }
         } catch (e) {
-          console.warn(e);
+          console.warn('Invalid date format:', e);
         }
       }
 
@@ -236,6 +257,8 @@ export default function ContactsList() {
     } catch (error) {
       console.error(error);
       showFeedback('error', 'Failed to add activity');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -773,27 +796,42 @@ export default function ContactsList() {
         size="lg"
       >
         <div className="fv-row mb-5">
-          <label className="form-label required fw-bold fs-6 mb-2">
+          <label className="form-label required fw-bold fs-6 mb-2 text-muted">
             <i className="ki-duotone ki-note-2 fs-4 me-2">
               <span className="path1"></span>
               <span className="path2"></span>
               <span className="path3"></span>
               <span className="path4"></span>
             </i>
-            Activity
+            Activity Summary (Auto-generated in Airtable)
           </label>
-          <input
-            className="form-control form-control-solid"
-            placeholder="Enter activity description"
-            value={formData.activity}
-            onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-          />
+          <div className="form-control form-control-solid bg-light text-muted">
+            {formData.activity || 'Activity description will be summarized...'}
+          </div>
         </div>
         <div className="fv-row mb-5">
           <label className="form-label required fw-bold fs-6 mb-2">
             <i className="ki-duotone ki-abstract-26 fs-4 me-2">
               <span className="path1"></span>
               <span className="path2"></span>
+            </i>
+            Activity Description
+          </label>
+          <textarea
+            className="form-control form-control-solid"
+            placeholder="Describe what happened..."
+            rows={3}
+            value={formData.activity}
+            onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+          />
+        </div>
+        <div className="fv-row mb-5">
+          <label className="form-label required fw-bold fs-6 mb-2">
+            <i className="ki-duotone ki-category fs-4 me-2">
+              <span className="path1"></span>
+              <span className="path2"></span>
+              <span className="path3"></span>
+              <span className="path4"></span>
             </i>
             Activity Type
           </label>
@@ -827,29 +865,78 @@ export default function ContactsList() {
           </select>
         </div>
         <div className="fv-row mb-5">
-          <label className="form-label fw-bold fs-6 mb-2">
-            <i className="ki-duotone ki-double-check fs-4 me-2">
-              <span className="path1"></span>
-              <span className="path2"></span>
-              <span className="path3"></span>
-              <span className="path4"></span>
-              <span className="path5"></span>
-              <span className="path6"></span>
-            </i>
-            Related Deals
-          </label>
-          <select
-            className="form-select form-select-solid"
-            value={formData.relatedDeals}
-            onChange={(e) => setFormData({ ...formData, relatedDeals: e.target.value })}
-          >
-            <option value="">Select deal...</option>
-            {deals.map(deal => (
-              <option key={deal.id} value={deal.id}>
-                {deal.fields['Deal Name']} {deal.fields['Amount'] ? `- $${deal.fields['Amount']}` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <label className="form-label fw-bold fs-6 mb-0">
+              <i className="ki-duotone ki-double-check fs-4 me-2">
+                <span className="path1"></span>
+                <span className="path2"></span>
+                <span className="path3"></span>
+                <span className="path4"></span>
+                <span className="path5"></span>
+                <span className="path6"></span>
+              </i>
+              Related Deals
+            </label>
+            <button
+              type="button"
+              className={`btn btn-sm ${isCreateDealInActivity ? 'btn-light-danger' : 'btn-light-primary'}`}
+              onClick={() => setIsCreateDealInActivity(!isCreateDealInActivity)}
+            >
+              {isCreateDealInActivity ? 'Cancel New Deal' : 'Create New Deal'}
+            </button>
+          </div>
+
+          {!isCreateDealInActivity ? (
+            <select
+              className="form-select form-select-solid"
+              value={formData.relatedDeals}
+              onChange={(e) => setFormData({ ...formData, relatedDeals: e.target.value })}
+            >
+              <option value="">Select existing deal...</option>
+              {deals.map(deal => (
+                <option key={deal.id} value={deal.id}>
+                  {deal.fields['Deal Name']} {deal.fields['Amount'] ? `- $${deal.fields['Amount']}` : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="card shadow-none border p-4 bg-light">
+              <div className="mb-3">
+                <label className="form-label fs-7 fw-bold">Deal Title</label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  placeholder="Enter deal name"
+                  value={newDealData.title}
+                  onChange={(e) => setNewDealData({ ...newDealData, title: e.target.value })}
+                />
+              </div>
+              <div className="row g-2">
+                <div className="col-6">
+                  <label className="form-label fs-7 fw-bold">Amount</label>
+                  <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    placeholder="0.00"
+                    value={newDealData.value}
+                    onChange={(e) => setNewDealData({ ...newDealData, value: e.target.value })}
+                  />
+                </div>
+                <div className="col-6">
+                  <label className="form-label fs-7 fw-bold">Stage</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={newDealData.stage}
+                    onChange={(e) => setNewDealData({ ...newDealData, stage: e.target.value as any })}
+                  >
+                    <option value="New">New</option>
+                    <option value="Discovery">Discovery</option>
+                    <option value="Prospective">Prospective</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className="fv-row mb-5">
           <label className="form-label fw-bold fs-6 mb-2">

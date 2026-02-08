@@ -440,6 +440,35 @@ export default function LeadsList() {
                             </div>
                           </div>
 
+                          {/* Owner */}
+                          <div className="d-flex align-items-center mb-2">
+                            <span
+                              className="text-gray-600 fs-7 cursor-pointer text-hover-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAssignOwner(lead.id, lead.fields['Owner']);
+                              }}
+                              title="Click to assign owner"
+                            >
+                              <i className="ki-duotone ki-user fs-6 me-1 text-primary">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                              {getOwnerName(lead.fields['Owner'])}
+                            </span>
+                          </div>
+
+                          {/* Phone */}
+                          {lead.fields['Phone'] && (
+                            <div className="mb-3">
+                              <i className="ki-duotone ki-phone fs-6 text-success me-2">
+                                <span className="path1"></span>
+                                <span className="path2"></span>
+                              </i>
+                              <span className="text-gray-700 fs-7 fw-bold">{lead.fields['Phone']}</span>
+                            </div>
+                          )}
+
                           {/* Company */}
                           {lead.fields['Company'] && (
                             <div className="mb-2">
@@ -453,7 +482,7 @@ export default function LeadsList() {
 
                           {/* Email */}
                           {lead.fields['Email'] && (
-                            <div className="mb-2">
+                            <div className="mb-3">
                               <i className="ki-duotone ki-sms fs-6 text-gray-500 me-2">
                                 <span className="path1"></span>
                                 <span className="path2"></span>
@@ -461,35 +490,6 @@ export default function LeadsList() {
                               <span className="text-gray-700 fs-7">{lead.fields['Email']}</span>
                             </div>
                           )}
-
-                          {/* Phone */}
-                          {lead.fields['Phone'] && (
-                            <div className="mb-3">
-                              <i className="ki-duotone ki-phone fs-6 text-gray-500 me-2">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
-                              <span className="text-gray-700 fs-7">{lead.fields['Phone']}</span>
-                            </div>
-                          )}
-
-                          {/* Owner */}
-                          <div className="d-flex align-items-center justify-content-between mb-3">
-                            <span
-                              className="text-gray-600 fs-7 cursor-pointer text-hover-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAssignOwner(lead.id, lead.fields['Owner']);
-                              }}
-                              title="Click to assign owner"
-                            >
-                              <i className="ki-duotone ki-user fs-6 me-1">
-                                <span className="path1"></span>
-                                <span className="path2"></span>
-                              </i>
-                              {getOwnerName(lead.fields['Owner'])}
-                            </span>
-                          </div>
 
                           {/* Actions */}
                           <div className="d-flex gap-2">

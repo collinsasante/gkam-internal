@@ -146,6 +146,11 @@ export default function DealsList() {
     }).format(amount);
   };
 
+  const getFieldValue = (field: any) => {
+    if (Array.isArray(field)) return field[0] || 'N/A';
+    return field || 'N/A';
+  };
+
   const getColumnColor = (stage?: DealStage) => {
     switch (stage) {
       case 'New': return '#dc3545';
@@ -347,6 +352,19 @@ export default function DealsList() {
                         </span>
                       </div>
 
+                      {/* Phone */}
+                      {(deal.fields as any)['Phone Number'] && (
+                        <div className="d-flex align-items-center mb-3">
+                          <i className="ki-duotone ki-phone fs-4 text-success me-2">
+                            <span className="path1"></span>
+                            <span className="path2"></span>
+                          </i>
+                          <span className="text-gray-700 fs-7 fw-bold">
+                            {getFieldValue((deal.fields as any)['Phone Number'])}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Close Date */}
                       {(deal.fields as any)['Expected Close Date'] && (
                         <div className="d-flex align-items-center mb-3">
@@ -527,7 +545,7 @@ export default function DealsList() {
                   </div>
                   <div className="col-6">
                     <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
-                    <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Phone Number'] || 'N/A'}</div>
+                    <div className="text-gray-800 fs-6 mt-1">{getFieldValue((selectedDeal.fields as any)['Phone Number'])}</div>
                   </div>
                 </div>
               </div>

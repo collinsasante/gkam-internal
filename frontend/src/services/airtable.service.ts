@@ -16,6 +16,7 @@ import type {
   DesignFeedback,
   CompletedLabelForm,
 } from '../types/airtable.types';
+import { slackService } from './slack.service';
 
 // Configuration
 const apiKey = import.meta.env.VITE_AIRTABLE_API_KEY;
@@ -141,6 +142,7 @@ async function fetchRecords<T>(tableName: string, options?: {
     return records;
   } catch (error) {
     console.error(`Error fetching records from ${tableName}:`, error);
+    slackService.sendError(error as Error, `fetching records from ${tableName}`);
     throw error;
   }
 }
@@ -156,6 +158,7 @@ async function getRecordById<T>(tableName: string, recordId: string): Promise<T>
     }
   } catch (error) {
     console.error(`Error fetching record ${recordId} from ${tableName}:`, error);
+    slackService.sendError(error as Error, `fetching record ${recordId} from ${tableName}`);
     throw error;
   }
 }
@@ -185,6 +188,7 @@ async function createRecord<T>(tableName: string, fields: Record<string, unknown
     return result;
   } catch (error) {
     console.error(`Error creating record in ${tableName}:`, error);
+    slackService.sendError(error as Error, `creating record in ${tableName}`);
     throw error;
   }
 }
@@ -215,6 +219,7 @@ async function updateRecord<T>(tableName: string, recordId: string, fields: Reco
     return result;
   } catch (error) {
     console.error(`Error updating record in ${tableName}:`, error);
+    slackService.sendError(error as Error, `updating record ${recordId} in ${tableName}`);
     throw error;
   }
 }
@@ -235,6 +240,7 @@ async function deleteRecord(tableName: string, recordId: string): Promise<void> 
     cacheService.invalidatePattern(`^${tableName}:`);
   } catch (error) {
     console.error(`Error deleting record from ${tableName}:`, error);
+    slackService.sendError(error as Error, `deleting record ${recordId} from ${tableName}`);
     throw error;
   }
 }
