@@ -439,7 +439,11 @@ export default function ActivitiesList() {
               {selectedActivity.fields['Activity Summary (Activity)'] && (
                 <div className="col-12">
                   <label className="text-muted fw-bold small d-block">Summary</label>
-                  <p className="mt-1">{selectedActivity.fields['Activity Summary (Activity)']}</p>
+                  <p className="mt-1">
+                    {typeof selectedActivity.fields['Activity Summary (Activity)'] === 'string'
+                      ? selectedActivity.fields['Activity Summary (Activity)']
+                      : (selectedActivity.fields['Activity Summary (Activity)'] as any).value || 'N/A'}
+                  </p>
                 </div>
               )}
               <div className="col-md-6">

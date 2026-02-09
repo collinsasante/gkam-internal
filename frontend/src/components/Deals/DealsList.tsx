@@ -562,7 +562,9 @@ export default function DealsList() {
                   </div>
                   <div className="col-6">
                     <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
-                    <div className="text-gray-800 fs-6 mt-1">{getFieldValue((selectedDeal.fields as any)['Phone Number'])}</div>
+                    <div className="text-gray-800 fs-6 mt-1">
+                      {selectedContact?.fields['Phone'] || getFieldValue((selectedDeal.fields as any)['Phone Number'])}
+                    </div>
                   </div>
                   <div className="col-6">
                     <label className="text-muted fs-7 fw-semibold d-block">Contact ID</label>
