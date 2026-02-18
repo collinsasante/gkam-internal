@@ -144,7 +144,7 @@ export default function DealsList() {
       // I'll use the generic createRecord or specific activityService if I can verify it.
       // Re-viewing viewings: activityService is exported.
 
-      const newActivity = await (dealsService as any).api.base('Activities').create({
+      await (dealsService as any).api.base('Activities').create({
         'Activity': activityForm.activity,
         'Activity Type': activityForm.type,
         'Status': activityForm.status,
@@ -163,17 +163,6 @@ export default function DealsList() {
     }
   };
 
-  const handleOpenEditModal = () => {
-    if (!selectedDeal) return;
-    setEditForm({
-      dealTitle: (selectedDeal.fields as any)['Deal Title'] || '',
-      dealValue: ((selectedDeal.fields as any)['Deal Value'] || '').toString(),
-      probability: ((selectedDeal.fields as any)['Close Probability '] || '').toString(),
-      closeDate: (selectedDeal.fields as any)['Expected Close Date'] ? new Date((selectedDeal.fields as any)['Expected Close Date']).toISOString().split('T')[0] : ''
-    });
-    setIsEditModalOpen(true);
-    setIsDetailsModalOpen(false);
-  };
 
   const handleEditSubmit = async () => {
     if (!selectedDeal || !editForm.dealTitle) {
