@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { leadsService, teamMemberService, contactService, activityService } from '../../services/airtable.service';
+import { leadsService, teamMemberService, contactService, activityService, dealsService } from '../../services/airtable.service';
 import type { Lead, TeamMember, Activity } from '../../types/airtable.types';
 import SkeletonLoader from '../Common/SkeletonLoader';
 import Modal from '../Common/Modal';
@@ -32,7 +32,11 @@ export default function LeadsList() {
     activity: '',
     type: 'Meeting' as Activity['fields']['Activity Type'],
     status: 'Done' as Activity['fields']['Status'],
-    notes: ''
+    notes: '',
+    relatedDealIds: [] as string[],
+    createNewDeal: false,
+    newDealTitle: '',
+    newDealValue: ''
   });
 
   // Delete Modal State
@@ -143,7 +147,6 @@ export default function LeadsList() {
   };
 
   const handleCardClick = async (lead: Lead) => {
-    console.log('DEBUG: Selected Lead Data:', lead);
     setSelectedLead(lead);
     setIsDetailsModalOpen(true);
     setActivityHistory([]); // Reset history
@@ -203,7 +206,11 @@ export default function LeadsList() {
       activity: '',
       type: 'Meeting',
       status: 'Done',
-      notes: ''
+      notes: '',
+      relatedDealIds: selectedLead.fields['Deals'] || [],
+      createNewDeal: false,
+      newDealTitle: '',
+      newDealValue: ''
     });
     setIsActivityModalOpen(true);
     setIsDetailsModalOpen(false);
@@ -217,6 +224,24 @@ export default function LeadsList() {
 
     try {
       const contactId = selectedContact?.id || (selectedLead.fields['Lead']?.[0]);
+      let dealIds = [...activityForm.relatedDealIds];
+
+      // Handle new deal creation if requested
+      if (activityForm.createNewDeal && activityForm.newDealTitle) {
+        try {
+          const newDeal = await (dealsService as any).create({
+            'Deal Name': activityForm.newDealTitle,
+            'Deal Value': parseFloat(activityForm.newDealValue) || 0,
+            'Stage': 'New',
+            'Leads': [selectedLead.id],
+            'Contact': contactId ? [contactId] : []
+          });
+          dealIds.push(newDeal.id);
+        } catch (dealErr) {
+          console.error('Error creating deal from activity:', dealErr);
+          showFeedback('error', 'Activity created but failed to create new deal');
+        }
+      }
 
       // Using any to bypass strict Activity Number requirement which is likely auto-generated
       await (activityService as any).create({
@@ -225,6 +250,7 @@ export default function LeadsList() {
         'Status': activityForm.status,
         'Leads': [selectedLead.id],
         'Contact': contactId ? [contactId] : undefined,
+        'Related Deals': dealIds.length > 0 ? dealIds : undefined,
         'COMMENTSs': activityForm.notes
       });
 
@@ -553,7 +579,9 @@ export default function LeadsList() {
                             <span className="path1"></span>
                             <span className="path2"></span>
                           </i>
-                          <span className="text-gray-700 fs-7 fw-bold">{lead.fields['Phone']}</span>
+                          <span className="text-gray-700 fs-7 fw-bold">
+                            {Array.isArray(lead.fields['Phone']) ? lead.fields['Phone'][0] : lead.fields['Phone']}
+                          </span>
                         </div>
                       )}
 
@@ -745,7 +773,9 @@ export default function LeadsList() {
                   <div className="col-12">
                     <div className="d-flex flex-column gap-1">
                       <span className="text-muted fs-7 fw-semibold">Phone</span>
-                      <span className="text-gray-800 fw-bold fs-6">{selectedLead.fields['Phone'] || 'N/A'}</span>
+                      <span className="text-gray-800 fw-bold fs-6">
+                        {(Array.isArray(selectedLead.fields['Phone']) ? selectedLead.fields['Phone'][0] : selectedLead.fields['Phone']) || 'N/A'}
+                      </span>
                     </div>
                   </div>
 
@@ -955,15 +985,99 @@ export default function LeadsList() {
               </select>
             </div>
           </div>
-          <div>
+          <div className="mb-5">
             <label className="form-label">Notes/Comments</label>
             <textarea
               className="form-control"
-              rows={3}
+              rows={2}
               value={activityForm.notes}
               onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })}
               placeholder="Any additional details..."
             />
+          </div>
+
+          <div className="separator separator-dashed my-5"></div>
+
+          {/* Related Deals Section */}
+          <div className="mb-5">
+            <label className="form-label fw-bold">Related Deals</label>
+            <div className="d-flex flex-column gap-2 mt-2">
+              {/* Existing Deals Checkboxes */}
+              {selectedLead?.fields['Deals'] && selectedLead.fields['Deals'].length > 0 ? (
+                <div className="bg-light p-3 rounded">
+                  <div className="fs-7 fw-bold text-gray-700 mb-2">Link to Existing Deals:</div>
+                  <div className="d-flex flex-wrap gap-3">
+                    {selectedLead.fields['Deals'].map((dealId: string, idx: number) => {
+                      const dealTitle = (selectedLead.fields['Deal Title'] as string[])?.[idx] || `Deal ${idx + 1}`;
+                      return (
+                        <div key={dealId} className="form-check form-check-custom form-check-solid">
+                          <input
+                            className="form-check-input h-20px w-20px"
+                            type="checkbox"
+                            checked={activityForm.relatedDealIds.includes(dealId)}
+                            onChange={(e) => {
+                              const newIds = e.target.checked
+                                ? [...activityForm.relatedDealIds, dealId]
+                                : activityForm.relatedDealIds.filter(id => id !== dealId);
+                              setActivityForm({ ...activityForm, relatedDealIds: newIds });
+                            }}
+                            id={`deal-${dealId}`}
+                          />
+                          <label className="form-check-label text-gray-800 fw-bold fs-7 ms-2" htmlFor={`deal-${dealId}`}>
+                            {dealTitle}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-muted fs-7">No existing deals found for this lead.</div>
+              )}
+
+              {/* Create New Deal Toggle */}
+              <div className="mt-4">
+                <div className="form-check form-switch form-check-custom form-check-solid">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    checked={activityForm.createNewDeal}
+                    onChange={(e) => setActivityForm({ ...activityForm, createNewDeal: e.target.checked })}
+                    id="createNewDealToggle"
+                  />
+                  <label className="form-check-label fw-bold text-gray-800" htmlFor="createNewDealToggle">
+                    Create a new deal from this activity
+                  </label>
+                </div>
+
+                {activityForm.createNewDeal && (
+                  <div className="card shadow-none border border-dashed mt-3 bg-light-primary p-4">
+                    <div className="row g-3">
+                      <div className="col-12">
+                        <label className="form-label required fs-7">New Deal Title</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          value={activityForm.newDealTitle}
+                          onChange={(e) => setActivityForm({ ...activityForm, newDealTitle: e.target.value })}
+                          placeholder="e.g. Q1 Software Solution"
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label fs-7">Deal Value (GHS)</label>
+                        <input
+                          type="number"
+                          className="form-control form-control-sm"
+                          value={activityForm.newDealValue}
+                          onChange={(e) => setActivityForm({ ...activityForm, newDealValue: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </Modal>

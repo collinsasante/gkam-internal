@@ -223,10 +223,6 @@ export default function DealsList() {
     }).format(amount);
   };
 
-  const getFieldValue = (field: any) => {
-    if (Array.isArray(field)) return field[0] || 'N/A';
-    return field || 'N/A';
-  };
 
   const getColumnColor = (stage?: DealStage) => {
     switch (stage) {
@@ -437,7 +433,7 @@ export default function DealsList() {
                             <span className="path2"></span>
                           </i>
                           <span className="text-gray-700 fs-7 fw-bold">
-                            {getFieldValue((deal.fields as any)['Phone Number'])}
+                            {Array.isArray((deal.fields as any)['Phone Number']) ? (deal.fields as any)['Phone Number'][0] : (deal.fields as any)['Phone Number']}
                           </span>
                         </div>
                       )}
@@ -577,7 +573,10 @@ export default function DealsList() {
                   <div className="col-4">
                     <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
                     <div className="text-gray-800 fw-bold fs-6 mt-1">
-                      {selectedContact?.fields['Phone'] || getFieldValue((selectedDeal.fields as any)['Phone Number'])}
+                      {selectedContact?.fields['Phone'] ||
+                        (Array.isArray((selectedDeal.fields as any)['Phone Number'])
+                          ? (selectedDeal.fields as any)['Phone Number'][0]
+                          : (selectedDeal.fields as any)['Phone Number']) || 'N/A'}
                     </div>
                   </div>
                 </div>

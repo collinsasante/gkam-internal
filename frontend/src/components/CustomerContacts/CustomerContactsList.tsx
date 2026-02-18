@@ -591,31 +591,45 @@ export default function CustomerContactsList() {
                 </div>
               </div>
               <div className="col-sm-12 col-md-7 d-flex align-items-center justify-content-center justify-content-md-end">
-                <ul className="pagination">
-                  <li className={`page-item previous ${currentPage === 1 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
-                      <i className="ki-duotone ki-arrow-left fs-2">
-                        <span className="path1"></span>
-                        <span className="path2"></span>
-                      </i>
-                    </button>
-                  </li>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                      <button className="page-link px-4" onClick={() => handlePageChange(i + 1)}>
-                        {i + 1}
-                      </button>
+                <div className="dataTables_paginate paging_simple_numbers">
+                  <ul className="pagination">
+                    <li className={`paginate_button page-item previous ${currentPage === 1 ? 'disabled' : ''}`}>
+                      <a
+                        href="#"
+                        className="page-link"
+                        onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                      >
+                        <i className="ki-duotone ki-arrow-left fs-2">
+                          <span className="path1"></span>
+                          <span className="path2"></span>
+                        </i>
+                      </a>
                     </li>
-                  ))}
-                  <li className={`page-item next ${currentPage === totalPages ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
-                      <i className="ki-duotone ki-arrow-right fs-2">
-                        <span className="path1"></span>
-                        <span className="path2"></span>
-                      </i>
-                    </button>
-                  </li>
-                </ul>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <li key={i} className={`paginate_button page-item ${currentPage === i + 1 ? 'active' : ''}`}>
+                        <a
+                          href="#"
+                          className="page-link px-4"
+                          onClick={(e) => { e.preventDefault(); handlePageChange(i + 1); }}
+                        >
+                          {i + 1}
+                        </a>
+                      </li>
+                    ))}
+                    <li className={`paginate_button page-item next ${currentPage === totalPages ? 'disabled' : ''}`}>
+                      <a
+                        href="#"
+                        className="page-link"
+                        onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) handlePageChange(currentPage + 1); }}
+                      >
+                        <i className="ki-duotone ki-arrow-right fs-2">
+                          <span className="path1"></span>
+                          <span className="path2"></span>
+                        </i>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}
