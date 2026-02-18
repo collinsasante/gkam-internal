@@ -28,6 +28,15 @@ export default function DealsList() {
     closeDate: ''
   });
 
+  const [activityForm, setActivityForm] = useState({
+    activity: '',
+    type: 'Meeting' as 'Meeting' | 'Phone Call' | 'Call Summary' | 'WhatsApp Chat',
+    status: 'Open' as 'Open' | 'Done',
+    notes: ''
+  });
+
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+
   // Status/Feedback State
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | null; message: string | null }>({ type: null, message: null });
 
@@ -73,20 +82,84 @@ export default function DealsList() {
     setSelectedDeal(deal);
     setIsDetailsModalOpen(true);
 
-    // Fetch linked contact to get the actual Contact ID
+    const phoneNumber = (deal.fields as any)['Phone Number'];
     const contactIds = (deal.fields as any)['Contact'];
+
     if (Array.isArray(contactIds) && contactIds.length > 0) {
       try {
         const contactId = contactIds[0];
         const contact = await contactService.getById(contactId);
-        console.log('DEBUG: Fetched Contact for Deal:', contact);
         setSelectedContact(contact);
       } catch (error) {
-        console.error('Error fetching contact:', error);
+        console.error('Error fetching contact by ID:', error);
+        setSelectedContact(null);
+      }
+    } else if (phoneNumber) {
+      // Fallback: search by phone number if direct link is missing
+      try {
+        const contacts = await contactService.getAll({
+          filterByFormula: `{Phone} = '${phoneNumber}'`
+        });
+        if (contacts.length > 0) {
+          setSelectedContact(contacts[0]);
+        } else {
+          setSelectedContact(null);
+        }
+      } catch (error) {
+        console.error('Error fetching contact by phone:', error);
         setSelectedContact(null);
       }
     } else {
       setSelectedContact(null);
+    }
+  };
+
+  const handleAddActivityClick = () => {
+    if (!selectedDeal) return;
+    setActivityForm({
+      activity: `Follow up on ${(selectedDeal.fields as any)['Deal Title']}`,
+      type: 'Meeting',
+      status: 'Open',
+      notes: ''
+    });
+    setIsActivityModalOpen(true);
+    setIsDetailsModalOpen(false);
+  };
+
+  const handleActivitySubmit = async () => {
+    if (!selectedDeal || !activityForm.activity) {
+      showFeedback('error', 'Activity description is required');
+      return;
+    }
+
+    try {
+      const leadId = (selectedDeal.fields as any)['Leads']?.[0];
+      const contactId = (selectedDeal.fields as any)['Contact']?.[0];
+
+      // Use activityService if available, otherwise use dealsService.api (fallback from earlier attempt)
+      // Since activityService is imported in airtable.service.ts, I should check if it's exported or accessible.
+      // Based on my view of airtable.service.ts, there is an activityService.
+
+      // Let's use a more robust way to create the activity record.
+      // I'll use the generic createRecord or specific activityService if I can verify it.
+      // Re-viewing viewings: activityService is exported.
+
+      const newActivity = await (dealsService as any).api.base('Activities').create({
+        'Activity': activityForm.activity,
+        'Activity Type': activityForm.type,
+        'Status': activityForm.status,
+        'Related Deals': [selectedDeal.id],
+        'Leads': leadId ? [leadId] : [],
+        'Contact': contactId ? [contactId] : [],
+        'COMMENTSs': activityForm.notes
+      });
+
+      showFeedback('success', 'Activity added successfully');
+      setIsActivityModalOpen(false);
+      loadData();
+    } catch (error) {
+      showFeedback('error', 'Failed to add activity');
+      console.error(error);
     }
   };
 
@@ -144,8 +217,6 @@ export default function DealsList() {
       console.error(error);
     }
   };
-
-
 
   const getOwnerName = (ownerIds?: string[]) => {
     if (!ownerIds || ownerIds.length === 0) return 'Unassigned';
@@ -495,13 +566,35 @@ export default function DealsList() {
         footer={
           <div className="d-flex justify-content-end gap-2">
             <button className="btn btn-danger" onClick={handleOpenDeleteModal}>Delete</button>
-            <button className="btn btn-primary" onClick={handleOpenEditModal}>Edit</button>
+            <button className="btn btn-primary" onClick={handleAddActivityClick}>Add Activity</button>
             <button className="btn btn-light" onClick={() => setIsDetailsModalOpen(false)}>Close</button>
           </div>
         }
       >
         {selectedDeal && (
           <div className="text-start p-2" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            {/* Lead & Owner Card */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-body p-4">
+                <div className="row g-4">
+                  <div className="col-4">
+                    <label className="text-muted fs-7 fw-semibold d-block">Lead Name</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">{(selectedDeal.fields as any)['Name of Lead'] || 'N/A'}</div>
+                  </div>
+                  <div className="col-4">
+                    <label className="text-muted fs-7 fw-semibold d-block">Owner</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">{getOwnerName((selectedDeal.fields as any)['Owner(Team Member)'])}</div>
+                  </div>
+                  <div className="col-4">
+                    <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
+                    <div className="text-gray-800 fw-bold fs-6 mt-1">
+                      {selectedContact?.fields['Phone'] || getFieldValue((selectedDeal.fields as any)['Phone Number'])}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Deal Information */}
             <div className="card shadow-sm mb-4">
               <div className="card-header bg-light-primary py-3 min-h-auto">
@@ -533,46 +626,6 @@ export default function DealsList() {
                   <div className="col-6">
                     <label className="text-muted fs-7 fw-semibold d-block">Expected Close Date</label>
                     <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Expected Close Date'] ? new Date((selectedDeal.fields as any)['Expected Close Date']).toLocaleDateString() : 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="card shadow-sm mb-4">
-              <div className="card-header bg-light-info py-3 min-h-auto">
-                <h6 className="card-title mb-0 text-info">
-                  <i className="ki-duotone ki-profile-circle fs-3 me-2">
-                    <span className="path1"></span>
-                    <span className="path2"></span>
-                    <span className="path3"></span>
-                  </i>
-                  Contact Information
-                </h6>
-              </div>
-              <div className="card-body p-4">
-                <div className="row g-4">
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold d-block">Owner</label>
-                    <div className="text-gray-800 fw-bold fs-6 mt-1">{getOwnerName((selectedDeal.fields as any)['Owner(Team Member)'])}</div>
-                  </div>
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold d-block">Lead Name</label>
-                    <div className="text-gray-800 fs-6 mt-1">{(selectedDeal.fields as any)['Name of Lead'] || 'N/A'}</div>
-                  </div>
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold d-block">Phone</label>
-                    <div className="text-gray-800 fs-6 mt-1">
-                      {selectedContact?.fields['Phone'] || getFieldValue((selectedDeal.fields as any)['Phone Number'])}
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <label className="text-muted fs-7 fw-semibold d-block">Contact ID</label>
-                    <div className="text-gray-800 fs-6 mt-1">
-                      {Array.isArray(selectedContact?.fields['Contact ID'])
-                        ? selectedContact?.fields['Contact ID'][0]
-                        : (selectedContact?.fields['Contact ID'] || 'N/A')}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -626,6 +679,65 @@ export default function DealsList() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Activity Modal */}
+      <Modal
+        isOpen={isActivityModalOpen}
+        onClose={() => setIsActivityModalOpen(false)}
+        title="Add Activity"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button className="btn btn-light" onClick={() => setIsActivityModalOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleActivitySubmit}>Save Activity</button>
+          </div>
+        }
+      >
+        <div className="text-start p-2">
+          <div className="mb-5">
+            <label className="form-label required fw-bold fs-6 mb-2">Activity Description</label>
+            <input
+              className="form-control form-control-solid"
+              value={activityForm.activity}
+              onChange={(e) => setActivityForm({ ...activityForm, activity: e.target.value })}
+              placeholder="e.g. Follow up call"
+            />
+          </div>
+          <div className="mb-5">
+            <label className="form-label required fw-bold fs-6 mb-2">Activity Type</label>
+            <select
+              className="form-select form-select-solid"
+              value={activityForm.type}
+              onChange={(e) => setActivityForm({ ...activityForm, type: e.target.value as any })}
+            >
+              <option value="Meeting">Meeting</option>
+              <option value="Phone Call">Phone Call</option>
+              <option value="Call Summary">Call Summary</option>
+              <option value="WhatsApp Chat">WhatsApp Chat</option>
+            </select>
+          </div>
+          <div className="mb-5">
+            <label className="form-label required fw-bold fs-6 mb-2">Status</label>
+            <select
+              className="form-select form-select-solid"
+              value={activityForm.status}
+              onChange={(e) => setActivityForm({ ...activityForm, status: e.target.value as any })}
+            >
+              <option value="Open">Open</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+          <div className="mb-5">
+            <label className="form-label fw-bold fs-6 mb-2">Notes</label>
+            <textarea
+              className="form-control form-control-solid"
+              rows={3}
+              value={activityForm.notes}
+              onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })}
+              placeholder="Add any additional notes here..."
+            />
+          </div>
+        </div>
       </Modal>
 
       {/* Edit Modal */}

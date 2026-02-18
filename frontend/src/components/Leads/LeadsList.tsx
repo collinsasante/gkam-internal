@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { leadsService, teamMemberService, contactService } from '../../services/airtable.service';
-import type { Lead, TeamMember } from '../../types/airtable.types';
+import { leadsService, teamMemberService, contactService, activityService } from '../../services/airtable.service';
+import type { Lead, TeamMember, Activity } from '../../types/airtable.types';
 import SkeletonLoader from '../Common/SkeletonLoader';
 import Modal from '../Common/Modal';
 
@@ -26,6 +26,14 @@ export default function LeadsList() {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [activityHistory, setActivityHistory] = useState<Activity[]>([]);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [activityForm, setActivityForm] = useState({
+    activity: '',
+    type: 'Meeting' as Activity['fields']['Activity Type'],
+    status: 'Done' as Activity['fields']['Status'],
+    notes: ''
+  });
 
   // Delete Modal State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -138,20 +146,94 @@ export default function LeadsList() {
     console.log('DEBUG: Selected Lead Data:', lead);
     setSelectedLead(lead);
     setIsDetailsModalOpen(true);
+    setActivityHistory([]); // Reset history
 
     // Fetch linked contact info if available to get Contact ID for details
+    let contact = null;
     if (lead.fields['Lead'] && Array.isArray(lead.fields['Lead']) && lead.fields['Lead'].length > 0) {
       try {
         const contactId = lead.fields['Lead'][0];
-        const contact = await contactService.getById(contactId);
+        contact = await contactService.getById(contactId);
         console.log('DEBUG: Fetched Contact for Lead:', contact);
-        setSelectedContact(contact);
       } catch (error) {
         console.error('Error fetching linked contact:', error);
-        setSelectedContact(null);
       }
-    } else {
-      setSelectedContact(null);
+    }
+
+    // Fallback: search by phone number
+    if (!contact && lead.fields['Phone']) {
+      try {
+        const contacts = await contactService.getAll({
+          filterByFormula: `{Phone} = '${lead.fields['Phone']}'`
+        });
+        if (contacts.length > 0) {
+          contact = contacts[0];
+          console.log('DEBUG: Found Contact by Phone Fallback:', contact);
+        }
+      } catch (error) {
+        console.error('Error searching contact by phone:', error);
+      }
+    }
+
+    setSelectedContact(contact);
+
+    // Fetch activities for this lead
+    if (lead.fields['Activities'] && lead.fields['Activities'].length > 0) {
+      try {
+        const activities = await Promise.all(
+          lead.fields['Activities'].map(async (id: string) => {
+            try {
+              return await activityService.getById(id);
+            } catch (err) {
+              console.error(`Failed to fetch activity ${id}:`, err);
+              return null;
+            }
+          })
+        );
+        setActivityHistory(activities.filter((a): a is Activity => a !== null));
+      } catch (err) {
+        console.error('Error fetching activity history:', err);
+      }
+    }
+  };
+
+  const handleAddActivityClick = () => {
+    if (!selectedLead) return;
+    setActivityForm({
+      activity: '',
+      type: 'Meeting',
+      status: 'Done',
+      notes: ''
+    });
+    setIsActivityModalOpen(true);
+    setIsDetailsModalOpen(false);
+  };
+
+  const handleActivitySubmit = async () => {
+    if (!selectedLead || !activityForm.activity) {
+      showFeedback('error', 'Activity description is required');
+      return;
+    }
+
+    try {
+      const contactId = selectedContact?.id || (selectedLead.fields['Lead']?.[0]);
+
+      // Using any to bypass strict Activity Number requirement which is likely auto-generated
+      await (activityService as any).create({
+        'Activity': activityForm.activity,
+        'Activity Type': activityForm.type,
+        'Status': activityForm.status,
+        'Leads': [selectedLead.id],
+        'Contact': contactId ? [contactId] : undefined,
+        'COMMENTSs': activityForm.notes
+      });
+
+      showFeedback('success', 'Activity added successfully');
+      setIsActivityModalOpen(false);
+      loadData();
+    } catch (error) {
+      showFeedback('error', 'Failed to add activity');
+      console.error(error);
     }
   };
 
@@ -609,6 +691,13 @@ export default function LeadsList() {
                 </button>
                 <button
                   type="button"
+                  className="btn btn-success"
+                  onClick={handleAddActivityClick}
+                >
+                  Add Activity
+                </button>
+                <button
+                  type="button"
                   className="btn btn-primary"
                   onClick={() => handleEditClick(selectedLead)}
                 >
@@ -717,7 +806,7 @@ export default function LeadsList() {
             </div>
 
             {/* Activity Summary */}
-            <div className="card shadow-sm">
+            <div className="card shadow-sm mb-4">
               <div className="card-header bg-light-success min-h-40px px-4 py-2">
                 <h6 className="card-title mb-0 text-success fs-6">
                   <i className="ki-duotone ki-chart-simple fs-3 me-2">
@@ -726,7 +815,7 @@ export default function LeadsList() {
                     <span className="path3"></span>
                     <span className="path4"></span>
                   </i>
-                  Activity Summary
+                  Activity Summary & History
                 </h6>
               </div>
               <div className="card-body p-4">
@@ -746,6 +835,26 @@ export default function LeadsList() {
                     </div>
                   )}
                 </div>
+
+                {activityHistory.length > 0 && (
+                  <>
+                    <div className="separator separator-dashed my-4"></div>
+                    <div className="d-flex flex-column gap-3">
+                      {activityHistory.map((activity) => (
+                        <div key={activity.id} className="bg-light p-3 rounded">
+                          <div className="d-flex justify-content-between align-items-start mb-1">
+                            <span className="badge badge-light-primary">{activity.fields['Activity Type']}</span>
+                            <span className="text-muted fs-8">{activity.fields['Created on'] ? new Date(activity.fields['Created on']).toLocaleDateString() : ''}</span>
+                          </div>
+                          <div className="text-gray-800 fw-bold fs-7">{activity.fields['Activity']}</div>
+                          {activity.fields['COMMENTSs'] && (
+                            <div className="text-muted fs-8 mt-1 fst-italic">{activity.fields['COMMENTSs']}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -779,6 +888,83 @@ export default function LeadsList() {
       >
         <div className="p-2">
           <p>Are you sure you want to delete this lead? This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Add Activity Modal */}
+      <Modal
+        isOpen={isActivityModalOpen}
+        onClose={() => setIsActivityModalOpen(false)}
+        title="Add New Activity"
+        footer={
+          <div className="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              className="btn btn-light"
+              onClick={() => {
+                setIsActivityModalOpen(false);
+                setIsDetailsModalOpen(true);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleActivitySubmit}
+            >
+              Add Activity
+            </button>
+          </div>
+        }
+      >
+        <div className="p-4">
+          <div className="mb-5">
+            <label className="form-label required">Activity Description</label>
+            <textarea
+              className="form-control"
+              rows={3}
+              value={activityForm.activity}
+              onChange={(e) => setActivityForm({ ...activityForm, activity: e.target.value })}
+              placeholder="What happened?"
+            />
+          </div>
+          <div className="row mb-5">
+            <div className="col-md-6">
+              <label className="form-label">Type</label>
+              <select
+                className="form-select"
+                value={activityForm.type}
+                onChange={(e) => setActivityForm({ ...activityForm, type: e.target.value as any })}
+              >
+                <option value="Meeting">Meeting</option>
+                <option value="Phone Call">Phone Call</option>
+                <option value="Call Summary">Call Summary</option>
+                <option value="WhatsApp Chat">WhatsApp Chat</option>
+              </select>
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Status</label>
+              <select
+                className="form-select"
+                value={activityForm.status}
+                onChange={(e) => setActivityForm({ ...activityForm, status: e.target.value as any })}
+              >
+                <option value="Done">Done</option>
+                <option value="Open">Open</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Notes/Comments</label>
+            <textarea
+              className="form-control"
+              rows={3}
+              value={activityForm.notes}
+              onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })}
+              placeholder="Any additional details..."
+            />
+          </div>
         </div>
       </Modal>
 

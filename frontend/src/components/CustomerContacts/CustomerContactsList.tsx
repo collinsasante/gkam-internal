@@ -14,7 +14,14 @@ export default function CustomerContactsList() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const tableRef = useRef<HTMLTableElement>(null);
-  const dataTableRef = useRef<any>(null);
+  const [selectedContact, setSelectedContact] = useState<CustomerContact | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'Customer ID',
+    direction: 'asc'
+  });
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -32,8 +39,6 @@ export default function CustomerContactsList() {
     setFeedback({ type, message });
     setTimeout(() => setFeedback({ type: null, message: null }), 3000);
   };
-
-  const [selectedContact, setSelectedContact] = useState<CustomerContact | null>(null);
 
   // Forms State
   const [createForm, setCreateForm] = useState({
@@ -85,59 +90,38 @@ export default function CustomerContactsList() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    // Initialize DataTable when contacts are loaded
-    if (!loading && contacts.length > 0 && tableRef.current && !dataTableRef.current) {
-      initializeDataTable();
-    }
+  const filteredAndSortedContacts = [...contacts]
+    .filter(contact => {
+      const search = searchTerm.toLowerCase();
+      return contact.fields['Contact Name']?.toLowerCase().includes(search) ||
+        contact.fields['Phone']?.toLowerCase().includes(search) ||
+        contact.fields['Customer ID']?.toLowerCase().includes(search) ||
+        (contact.fields['Discovery Source'] || '').toLowerCase().includes(search);
+    })
+    .sort((a, b) => {
+      let valA: any = a.fields[sortConfig.key as keyof typeof a.fields] || '';
+      let valB: any = b.fields[sortConfig.key as keyof typeof b.fields] || '';
 
-    // Cleanup DataTable on unmount
-    return () => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
+      if (sortConfig.key === 'Customer ID') {
+        const numA = parseInt(valA.replace(/\D/g, '')) || 0;
+        const numB = parseInt(valB.replace(/\D/g, '')) || 0;
+        return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
       }
-    };
-  }, [loading, contacts]);
 
-  const initializeDataTable = () => {
-    if (!tableRef.current || typeof $ === 'undefined') return;
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
 
-    try {
-      // Add custom sorting function for Customer ID (CU-1, CU-2, etc.)
-      $.fn.dataTable.ext.type.order['customer-id-pre'] = function (data: string) {
-        // Extract the number from "CU-123" format
-        const match = data.match(/CU-(\d+)/);
-        return match ? parseInt(match[1], 10) : 0;
-      };
+  const totalPages = Math.ceil(filteredAndSortedContacts.length / itemsPerPage);
+  const paginatedContacts = filteredAndSortedContacts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-      dataTableRef.current = $(tableRef.current).DataTable({
-        info: false,
-        order: [[0, 'asc']], // Sort by Customer ID ascending (1 to infinity)
-        pageLength: 50,
-        columnDefs: [
-          {
-            targets: 0,
-            type: 'customer-id', // Use custom sorting type
-            orderable: true
-          },
-          { orderable: false, targets: '_all' }, // Disable sorting on all other columns
-        ],
-        language: {
-          search: '',
-          searchPlaceholder: 'Search contacts...',
-          lengthMenu: '_MENU_',
-          paginate: {
-            previous: '<i class="ki-duotone ki-arrow-left"><span class="path1"></span><span class="path2"></span></i>',
-            next: '<i class="ki-duotone ki-arrow-right"><span class="path1"></span><span class="path2"></span></i>',
-          },
-        },
-        dom: `<'row'<'col-sm-12'tr>>
-              <'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>`,
-      });
-    } catch (err) {
-      console.error('Error initializing DataTable:', err);
-    }
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const loadData = async () => {
@@ -483,17 +467,37 @@ export default function CustomerContactsList() {
         {/* Card Body */}
         <div className="card-body py-4">
           {/* Search Bar */}
-          <div className="d-flex align-items-center position-relative mb-5">
-            <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5">
-              <span className="path1"></span>
-              <span className="path2"></span>
-            </i>
-            <input
-              type="text"
-              data-kt-customer-table-filter="search"
-              className="form-control form-control-solid w-250px ps-13"
-              placeholder="Search contacts..."
-            />
+          <div className="d-flex align-items-center position-relative mb-5 gap-3">
+            <div className="position-relative">
+              <i className="ki-duotone ki-magnifier fs-3 position-absolute ms-5 top-50 translate-middle-y">
+                <span className="path1"></span>
+                <span className="path2"></span>
+              </i>
+              <input
+                type="text"
+                className="form-control form-control-solid w-250px ps-13"
+                placeholder="Search contacts..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <select
+              className="form-select form-select-solid w-200px"
+              value={`${sortConfig.key}-${sortConfig.direction}`}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split('-');
+                setSortConfig({ key, direction: direction as 'asc' | 'desc' });
+                setCurrentPage(1);
+              }}
+            >
+              <option value="Customer ID-asc">ID (Low-High)</option>
+              <option value="Customer ID-desc">ID (High-Low)</option>
+              <option value="Contact Name-asc">Name (A-Z)</option>
+              <option value="Contact Name-desc">Name (Z-A)</option>
+            </select>
           </div>
 
           {/* Table */}
@@ -514,7 +518,7 @@ export default function CustomerContactsList() {
                 </tr>
               </thead>
               <tbody className="text-gray-600 fw-semibold">
-                {contacts.length === 0 ? (
+                {paginatedContacts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-10">
                       <div className="text-gray-600 fs-4 mb-3">No customer contacts found</div>
@@ -528,7 +532,7 @@ export default function CustomerContactsList() {
                     </td>
                   </tr>
                 ) : (
-                  contacts.map((contact, index) => (
+                  paginatedContacts.map((contact) => (
                     <tr
                       key={contact.id}
                       style={{ cursor: 'pointer' }}
@@ -537,12 +541,12 @@ export default function CustomerContactsList() {
                     >
                       <td>
                         <span className="text-gray-900 fw-bold text-hover-primary fs-6">
-                          CU{index + 1}
+                          {contact.fields['Customer ID']}
                         </span>
                       </td>
                       <td>
                         <span className="text-gray-800 text-hover-primary mb-1 fw-bold">
-                          {toTitleCase(contact.fields['Contact Name'])}
+                          {contact.fields['Contact Name'] ? toTitleCase(contact.fields['Contact Name']) : 'N/A'}
                         </span>
                       </td>
                       <td>
@@ -577,6 +581,44 @@ export default function CustomerContactsList() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="row mt-5">
+              <div className="col-sm-12 col-md-5 d-flex align-items-center justify-content-center justify-content-md-start">
+                <div className="text-gray-700 fs-7 fw-bold">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedContacts.length)} of {filteredAndSortedContacts.length} records
+                </div>
+              </div>
+              <div className="col-sm-12 col-md-7 d-flex align-items-center justify-content-center justify-content-md-end">
+                <ul className="pagination">
+                  <li className={`page-item previous ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
+                      <i className="ki-duotone ki-arrow-left fs-2">
+                        <span className="path1"></span>
+                        <span className="path2"></span>
+                      </i>
+                    </button>
+                  </li>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
+                      <button className="page-link px-4" onClick={() => handlePageChange(i + 1)}>
+                        {i + 1}
+                      </button>
+                    </li>
+                  ))}
+                  <li className={`page-item next ${currentPage === totalPages ? 'disabled' : ''}`}>
+                    <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
+                      <i className="ki-duotone ki-arrow-right fs-2">
+                        <span className="path1"></span>
+                        <span className="path2"></span>
+                      </i>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
