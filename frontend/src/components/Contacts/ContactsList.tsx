@@ -516,7 +516,7 @@ export default function ContactsList() {
                         </td>
                         <td>
                           <span className="text-gray-900 fw-bold d-block fs-6">
-                            {contact.fields['Phone'] || 'N/A'}
+                            {Array.isArray(contact.fields['Phone']) ? contact.fields['Phone'][0] : contact.fields['Phone'] || 'N/A'}
                           </span>
                         </td>
                         <td>
@@ -549,23 +549,39 @@ export default function ContactsList() {
               <div className="fs-6 fw-bold text-gray-700">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedContacts.length)} of {sortedContacts.length} entries
               </div>
-              <ul className="pagination">
-                <li className={`page-item previous ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
-                    <i className="ki-outline ki-left fs-2"></i>
-                  </button>
-                </li>
-                {[...Array(totalPages)].map((_, i) => (
-                  <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => setCurrentPage(i + 1)}>{i + 1}</button>
+              <div className="dataTables_paginate paging_simple_numbers">
+                <ul className="pagination">
+                  <li className={`paginate_button page-item previous ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <a
+                      href="#"
+                      className="page-link"
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
+                    >
+                      <i className="ki-outline ki-left fs-2"></i>
+                    </a>
                   </li>
-                ))}
-                <li className={`page-item next ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
-                    <i className="ki-outline ki-right fs-2"></i>
-                  </button>
-                </li>
-              </ul>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <li key={i} className={`paginate_button page-item ${currentPage === i + 1 ? 'active' : ''}`}>
+                      <a
+                        href="#"
+                        className="page-link px-4"
+                        onClick={(e) => { e.preventDefault(); setCurrentPage(i + 1); }}
+                      >
+                        {i + 1}
+                      </a>
+                    </li>
+                  ))}
+                  <li className={`paginate_button page-item next ${currentPage === totalPages ? 'disabled' : ''}`}>
+                    <a
+                      href="#"
+                      className="page-link"
+                      onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }}
+                    >
+                      <i className="ki-outline ki-right fs-2"></i>
+                    </a>
+                  </li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
@@ -732,7 +748,9 @@ export default function ContactsList() {
                 </div>
                 <div className="col-md-6">
                   <label className="fw-bold text-muted d-block mb-1">Phone Number</label>
-                  <span className="fw-bolder fs-6 text-gray-800">{selectedContact.fields['Phone'] || 'N/A'}</span>
+                  <span className="fw-bolder fs-6 text-gray-800">
+                    {Array.isArray(selectedContact.fields['Phone']) ? selectedContact.fields['Phone'][0] : selectedContact.fields['Phone'] || 'N/A'}
+                  </span>
                 </div>
                 <div className="col-md-6">
                   <label className="fw-bold text-muted d-block mb-1">Email Address</label>
